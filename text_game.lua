@@ -2,6 +2,11 @@ local mod = {}
 
 --[[@class text_game: {objects:unknown[]}]]
 
+local io = io
+local os = os
+_G.io = nil
+_G.os = nil
+
 mod.null = {}
 mod.metatable_symbol = {}
 mod.properties_metatable_symbol = {}
@@ -51,12 +56,13 @@ local make_context = function(path, opts)
 	local make_smart_object = function(v)
 		local smart_object = smart_object_cache[v]
 		if not smart_object then
+			--[[first arg must not be v, because we do not want to set the metatable of v itself]]
 			smart_object = setmetatable({}, smart_object_metatable(context, v))
 			smart_object_cache[v] = smart_object
 		end
 		return smart_object
 	end
-	context.ui = type(opts.ui) == "table" and opts.ui or type(opts.ui) == "string" or mod.ui[opts.ui] or mod.ui.plain_text
+	context.ui = type(opts.ui) == "table" and opts.ui or type(opts.ui) == "string" or mod.ui[opts.ui] or mod.ui.ansi
 	context.objects = setmetatable({},
 		{ __index = function(_, k) return make_smart_object(context.game.objects[k]) end })
 	context.null = mod.null
@@ -133,7 +139,8 @@ end
 
 local write_object_without_metatable
 write_object_without_metatable = function(object, write, on_write_table, should_write_table, data) --[[@param object table]]
-	on_write_table = on_write_table or function(v) write_object(v, write, on_write_table, should_write_table, data) end
+	on_write_table = on_write_table or
+			function(v, _, data2) write_object(v, write, on_write_table, should_write_table, data2) end
 	should_write_table = should_write_table or return_true
 	write("{ ")
 	local length = #object
@@ -147,7 +154,7 @@ write_object_without_metatable = function(object, write, on_write_table, should_
 			elseif type(v) ~= "table" then
 				write(tostring(v))
 			else
-				on_write_table(v)
+				on_write_table(v, k, data)
 			end
 			write(", ")
 		end
@@ -157,7 +164,8 @@ end
 
 --[[@param object table]]
 write_object = function(object, write, on_write_table, should_write_table, data)
-	on_write_table = on_write_table or function(v) write_object(v, write, on_write_table, should_write_table, data) end
+	on_write_table = on_write_table or
+			function(v, _, data2) write_object(v, write, on_write_table, should_write_table, data2) end
 	should_write_table = should_write_table or return_true
 	local metatable = getmetatable(object) --[[@type table?]]
 	if metatable and not should_write_table(metatable, mod.metatable_symbol, data) then metatable = nil end
@@ -165,7 +173,7 @@ write_object = function(object, write, on_write_table, should_write_table, data)
 	write_object_without_metatable(object, write, on_write_table, should_write_table, data)
 	if metatable then
 		write(", ")
-		on_write_table(metatable)
+		on_write_table(metatable, mod.metatable_symbol, data)
 		write(")")
 	end
 end
@@ -188,18 +196,23 @@ mod.save_internal = function(path, game)
 	local object_lookup = {} --[[@type table<table, integer>]]
 	for i, v in ipairs(game.objects) do object_lookup[v] = i end
 	local nested_object_lookup = {} --[[@type table<table, integer>]]
+	local nested_object_counts = {} --[[@type table<table, integer>]]
 	local nested_objects = {} --[[@type table[] ]]
 	local nested_object_count = 0
 	local process_object
 	local process_value = function(v)
 		if type(v) == "table" and not is_function(v) and not object_lookup[v] then
-			local old_i = nested_object_lookup[v]
-			if old_i then nested_objects[old_i] = nil end
-			nested_object_count = nested_object_count + 1
-			local i = nested_object_count
-			nested_objects[i] = v
-			nested_object_lookup[v] = i
-			process_object(v)
+			local old_count = nested_object_counts[v]
+			nested_object_counts[v] = (old_count or 0) + 1
+			if not old_count then
+				local old_i = nested_object_lookup[v]
+				if old_i then nested_objects[old_i] = nil end
+				nested_object_count = nested_object_count + 1
+				local i = nested_object_count
+				nested_objects[i] = v
+				nested_object_lookup[v] = i
+				process_object(v)
+			end
 		end
 	end
 	process_object = function(object) --[[@param object table]]
@@ -211,16 +224,16 @@ mod.save_internal = function(path, game)
 	end
 	for _, object in ipairs(game.objects) do process_object(object) end
 	do --[[remove nils from nested_objects]]
-		local i = 1
+		local new_nested_objects = {}
 		for j = 1, nested_object_count do
-			if nested_objects[j] then
-				if i ~= j then
-					nested_objects[i] = nested_objects[j]
-					nested_objects[j] = nil
-				end
-				i = i + 1
+			local v = nested_objects[j]
+			if v and nested_object_counts[v] > 1 then
+				new_nested_objects[#new_nested_objects + 1] = v
 			end
 		end
+		nested_objects = new_nested_objects
+		--[[@diagnostic disable-next-line: cast-local-type]]
+		nested_object_counts = nil
 	end
 	local nested_end = #nested_objects + 1
 	nested_object_lookup = {} --[[update indices based on compacted array]]
@@ -243,9 +256,23 @@ mod.save_internal = function(path, game)
 		end
 		return true
 	end
-	local on_write_table = function(v)
-		local rev_i = nested_end - nested_object_lookup[v]
-		write("nested[", rev_i, "]")
+	local on_write_table
+	on_write_table = function(v, k, data)
+		local i = nested_object_lookup[v]
+		if i then
+			local rev_i = nested_end - i
+			write("nested[", rev_i, "]")
+			return
+		end
+		local self = data.self
+		if k == mod.metatable_symbol then
+			self = "getmetatable(" .. self .. ")"
+		else
+			local key = as_key(k)
+			if key:byte(1) ~= 91 --[[ [ ]] then key = "." .. key end
+			self = self .. key
+		end
+		write_object(v, write, on_write_table, should_write_table, { self = self })
 	end
 
 	--[[FIXME: minimize using nested objects when possible]]
@@ -279,12 +306,16 @@ end
 --[[@param backup? boolean]]
 mod.save = function(path, game, backup)
 	if backup ~= false then
-		assert(os.rename(path, path .. ".bak"))
+		local file = io.open(path)
+		if file then
+			file:close()
+			assert(os.rename(path, path .. ".bak"))
+		end
 	end
 	local success, err = pcall(mod.save_internal, path, game)
 	if not success then
 		os.remove(path)
-		error(err)
+		io.stderr:write(err, "\n")
 	end
 end
 
@@ -304,8 +335,7 @@ plain_text_ui.container = join_with_space
 plain_text_ui.sentence = join_with_blank
 plain_text_ui.color = join_with_blank
 
---[[ansi support (8/16/256 colors) can come later, quantization is hard]]
-
+--[[ansi support for 8/16/256 colors can come later, quantization is hard]]
 ui.ansi = {}
 local ansi_ui = mod.ui.ansi
 ansi_ui.container = join_with_space
@@ -325,6 +355,7 @@ ansi_ui.color = function(table)
 	return text
 end
 
+--[[needs http and/or ws server to actually work since it needs to connect to the lua process]]
 ui.html = {}
 local html_ui = mod.ui.html
 html_ui.container = join_with_space
@@ -379,9 +410,13 @@ else
 	local path = arg[1]
 	local success, ctx = pcall(mod.load, path)
 	if not success then
-		local game = mod.new_game()
-		mod.save(path, game)
-		success, ctx = pcall(mod.load, path)
+		if ctx:find("No such file or directory$") then
+			local game = mod.new_game()
+			mod.save(path, game)
+			success, ctx = pcall(mod.load, path)
+		else
+			error(ctx)
+		end
 	end
 	do
 		local ui_renderer = os.getenv("TG_UI")
@@ -436,24 +471,28 @@ define_properties(val, parent = nil, getters = nil, setters = nil) - add getters
 end
 
 --[[FIXME:
-printf 'save()\n.exit' | rlwrap luajit text_game.lua games/pterror.lua
+printf 'save()' | rlwrap luajit text_game.lua games/pterror.lua
 
 this command causes the repl to enter an infinite loop
 exiting on empty input is far from an ideal solution
 ]]
---[[TODO: mostly working, but `.description` is not working because `target` is not the correct object...]]
---[[TODO: unnest `nested[]` tables when possible]]
 --[[TODO: test `a = {}; a.a = a; a.b = a` - esp. for objects]]
---[[TODO:
-- properly implement ctx.define_properties
-- implement codegen for define_properties (requires detection for it as well)
-	- also decide on an order for define_properties vs setmetatable
-		- setmetatable is still desired because it may have e.g. __call
-- basic output (ansi codes)
-]]
 --[[
 - future output formats:
-	- quantization to 256 color ansi (and possibly lower)
-	- html (needs http and/or ws server)
-	- qt? (needs to be able to be run from qml?)
+	- qt? (needs to be able to run lua from qml)
+		- i don't think this thing needs to access anything special so embedding luajit as a qt plugin should be enough
+			- will be slow on mobile though
+]]
+--[[
+next steps:
+- moving around rooms
+- interacting with (mutating) rooms
+- inventory
+- eating
+- verbs/cli
+]]
+--[[
+low priority (taking features from lambdamoo):
+- permission controls - check for sandbox escapes
+- hashing for passwords
 ]]
