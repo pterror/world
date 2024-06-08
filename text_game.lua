@@ -19,55 +19,54 @@ mod.function_ = function(source)
 	return setmetatable({ source = source, function_ = loadstring("return " .. source)() }, function_metatable)
 end
 
---[[@param metatable unknown]]
-local is_properties_metatable = function(metatable)
-	return type(metatable) == "table" and metatable[mod.properties_metatable_symbol] == true
-end
-
 --[[@param context table]]
---[[@param parent? table]]
---[[@param getters? table]]
---[[@param setters? table]]
-local properties_metatable = function(context, parent, getters, setters)
+--[[@param object table]]
+local smart_object_metatable = function(context, object)
 	return {
-		[mod.properties_metatable_symbol] = true,
-		parent = parent,
-		getters = getters,
-		setters = setters,
-		__index = function(target, key)
-			if getters and getters[key] then
-				return getters[key](target, context)
-			else
-				return parent and parent[key]
-			end
+		__index = function(_, key)
+			local value = object[key]
+			if value then return value end
+			local getter = object["get " .. key]
+			if getter then return getter(object, context) end
 		end,
-		__newindex = function(target, key, value)
-			if setters and setters[key] then
-				setters[key](target, value, context)
-			else
-				rawset(target, key, value)
+		__newindex = function(_, key, value)
+			if object[key] then
+				object[key] = value
+				return
 			end
+			local setter = object["set " .. key]
+			if setter then
+				setter(object, value, context)
+				return
+			end
+			object[key] = value
 		end,
 	}
 end
 
-mod.define_properties = function(context, base, parent, getters, setters)
-	return setmetatable(base, properties_metatable(context, parent, getters, setters))
-end
-
 local make_context = function(path)
-	local obj = {}
-	obj.null = mod.null
-	obj.function_ = mod.function_
-	obj.define_properties = function(...) return mod.define_properties(obj, ...) end
+	local context = {}
+	local smart_object_cache = setmetatable({}, { __mode = "k" })
+	local make_smart_object = function(v)
+		local smart_object = smart_object_cache[v]
+		if not smart_object then
+			smart_object = setmetatable({}, smart_object_metatable(context, v))
+			smart_object_cache[v] = smart_object
+		end
+		return smart_object
+	end
+	context.objects = setmetatable({},
+		{ __index = function(_, k) return make_smart_object(context.game.objects[k]) end })
+	context.null = mod.null
+	context.function_ = mod.function_
 	--[[@param backup? boolean]]
-	obj.save = function(backup) mod.save(path, obj.game, backup) end
-	obj.new_object = function(val)
+	context.save = function(backup) mod.save(path, context.game, backup) end
+	context.new_object = function(val)
 		val = val or {}
-		obj.game.objects[#obj.game.objects + 1] = val or {}
+		context.game.objects[#context.game.objects + 1] = val or {}
 		return val
 	end
-	return obj
+	return context
 end
 
 local replacements = { ["\r"] = "\\r", ["\n"] = "\\n", ["\t"] = "\\t", ["\""] = "\\\"" }
@@ -205,13 +204,7 @@ mod.save_internal = function(path, game)
 		for _, v in pairs(object) do process_value(v) end
 		local metatable = getmetatable(object)
 		if type(metatable) == "table" then
-			if is_properties_metatable(metatable) then
-				process_value(metatable.parent)
-				process_value(metatable.getters)
-				process_value(metatable.setters)
-			else
-				process_value(metatable)
-			end
+			process_value(metatable)
 		end
 	end
 	for _, object in ipairs(game.objects) do process_object(object) end
@@ -244,21 +237,6 @@ mod.save_internal = function(path, game)
 				if key:byte(1) ~= 91 --[[ [ ]] then key = "." .. key end
 				extra_statements[#extra_statements + 1] = data.self .. key .. " = objects[" .. i .. "]"
 			end
-			return false
-		end
-		if k == mod.metatable_symbol and is_properties_metatable(v) then
-			local obj_to_string = function(obj)
-				if not obj then return "nil" end
-				local i2 = nested_object_lookup[obj]
-				if i2 then return "nested[" .. (nested_end - i2) .. "]" end
-				i2 = object_lookup[v]
-				if i2 then return "objects[" .. i2 .. "]" end
-				return "nil"
-			end
-			extra_statements[#extra_statements + 1] = data.self ..
-					" = ctx.define_properties(" ..
-					data.self ..
-					", " .. obj_to_string(v.parent) .. ", " .. obj_to_string(v.getters) .. ", " .. obj_to_string(v.setters) .. ")"
 			return false
 		end
 		return true
@@ -324,7 +302,6 @@ else
 	end
 	_G.pretty_print = pretty_print
 	for k, v in pairs(ctx) do _G[k] = v end
-	for k, v in pairs(ctx.game) do _G[k] = v end
 	while true do
 		io.stdout:write("text_game> ")
 		local input = tostring(io.stdin:read("line"))
