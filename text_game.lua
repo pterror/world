@@ -44,7 +44,8 @@ local smart_object_metatable = function(context, object)
 	}
 end
 
-local make_context = function(path)
+local make_context = function(path, opts)
+	opts = opts or {}
 	local context = {}
 	local smart_object_cache = setmetatable({}, { __mode = "k" })
 	local make_smart_object = function(v)
@@ -55,6 +56,7 @@ local make_context = function(path)
 		end
 		return smart_object
 	end
+	context.ui = type(opts.ui) == "table" and opts.ui or type(opts.ui) == "string" or mod.ui[opts.ui] or mod.ui.plain_text
 	context.objects = setmetatable({},
 		{ __index = function(_, k) return make_smart_object(context.game.objects[k]) end })
 	context.null = mod.null
@@ -288,6 +290,87 @@ end
 
 mod.new_game = function() return { objects = {} } end
 
+--[[@param parts string[] ]]
+local join_with_blank = function(parts) return table.concat(parts, "") end
+--[[@param parts string[] ]]
+local join_with_space = function(parts) return table.concat(parts, " ") end
+
+mod.ui = {}
+local ui = mod.ui
+
+ui.plain_text = {}
+local plain_text_ui = mod.ui.plain_text
+plain_text_ui.container = join_with_space
+plain_text_ui.sentence = join_with_blank
+plain_text_ui.color = join_with_blank
+
+--[[ansi support (8/16/256 colors) can come later, quantization is hard]]
+
+ui.ansi = {}
+local ansi_ui = mod.ui.ansi
+ansi_ui.container = join_with_space
+ansi_ui.sentence = join_with_blank
+local truecolor_colorspace_processor = {}
+truecolor_colorspace_processor.rgb = function(t)
+	return "\x1b[38;2;" ..
+			math.floor(t.red or 0) .. ";" .. math.floor(t.green or 0) .. ";" .. math.floor(t.blue or 0) .. "m"
+end
+ansi_ui.color = function(table)
+	local text = join_with_blank(table)
+	local processor = truecolor_colorspace_processor[table.space]
+	if processor and table.color then
+		--[[TODO: keep a stack of formatting info, when an inner `color` ends the outer `color` should still apply]]
+		text = processor(table.color) .. text .. "\x1b[0m"
+	end
+	return text
+end
+
+ui.html = {}
+local html_ui = mod.ui.html
+html_ui.container = join_with_space
+html_ui.sentence = join_with_blank
+local css_colorspace_processor = {}
+local css_colorspace_alpha = function(alpha)
+	if not alpha or alpha == 1 then return "" end
+	return " / " .. alpha
+end
+css_colorspace_processor.rgb = function(t)
+	return "rgb(" ..
+			(t.red or 0) .. " " .. (t.green or 0) .. " " .. (t.blue or 0) .. css_colorspace_alpha(t.alpha) .. ")"
+end
+css_colorspace_processor.lch = function(t)
+	return "lch(" ..
+			(t.lightness or 0) .. " " .. (t.chroma or 0) .. " " .. (t.hue or 0) .. css_colorspace_alpha(t.alpha) .. ")"
+end
+css_colorspace_processor.lab = function(t)
+	return "lab(" ..
+			(t.lightness or 0) .. " " .. (t.a or 0) .. " " .. (t.b or 0) .. css_colorspace_alpha(t.alpha) .. ")"
+end
+css_colorspace_processor.oklch = function(t)
+	return "oklch(" ..
+			(t.lightness or 0) .. " " .. (t.chroma or 0) .. " " .. (t.hue or 0) .. css_colorspace_alpha(t.alpha) .. ")"
+end
+css_colorspace_processor.oklab = function(t)
+	return "oklab(" ..
+			(t.lightness or 0) .. " " .. (t.a or 0) .. " " .. (t.b or 0) .. css_colorspace_alpha(t.alpha) .. ")"
+end
+css_colorspace_processor.hsl = function(t)
+	return "hwb(" ..
+			(t.hue or 0) .. " " .. (t.saturation or 0) .. " " .. (t.lightness or 0) .. css_colorspace_alpha(t.alpha) .. ")"
+end
+css_colorspace_processor.hwb = function(t)
+	return "hwb(" ..
+			(t.hue or 0) .. " " .. (t.whiteness or 0) .. " " .. (t.blackness or 0) .. css_colorspace_alpha(t.alpha) .. ")"
+end
+html_ui.color = function(table)
+	local text = join_with_blank(table)
+	local processor = css_colorspace_processor[table.space]
+	if processor and table.color then
+		text = "<span style=\"color: " .. processor(table.color) .. "\">" .. text .. "</span>"
+	end
+	return text
+end
+
 local normalize_command = { x = "exit", h = "help" }
 
 if pcall(debug.getlocal, 4, 1) then
@@ -299,6 +382,10 @@ else
 		local game = mod.new_game()
 		mod.save(path, game)
 		success, ctx = pcall(mod.load, path)
+	end
+	do
+		local ui_renderer = os.getenv("TG_UI")
+		if ui_renderer then ctx.ui = mod.ui[ui_renderer] end
 	end
 	_G.pretty_print = pretty_print
 	for k, v in pairs(ctx) do _G[k] = v end
