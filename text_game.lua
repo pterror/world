@@ -4,8 +4,10 @@ local mod = {}
 
 local io = io
 local os = os
+local print = print
 _G.io = nil
 _G.os = nil
+_G.print = nil
 
 mod.null = {}
 mod.metatable_symbol = {}
@@ -24,51 +26,16 @@ mod.function_ = function(source)
 	return setmetatable({ source = source, function_ = loadstring("return " .. source)() }, function_metatable)
 end
 
---[[@param context table]]
---[[@param object table]]
-local smart_object_metatable = function(context, object)
-	return {
-		__index = function(_, key)
-			local value = object[key]
-			if value then return value end
-			local getter = object["get " .. key]
-			if getter then return getter(object, context) end
-		end,
-		__newindex = function(_, key, value)
-			if object[key] then
-				object[key] = value
-				return
-			end
-			local setter = object["set " .. key]
-			if setter then
-				setter(object, value, context)
-				return
-			end
-			object[key] = value
-		end,
-	}
-end
-
 local make_context = function(path, opts)
 	opts = opts or {}
 	local context = {}
-	local smart_object_cache = setmetatable({}, { __mode = "k" })
-	local make_smart_object = function(v)
-		local smart_object = smart_object_cache[v]
-		if not smart_object then
-			--[[first arg must not be v, because we do not want to set the metatable of v itself]]
-			smart_object = setmetatable({}, smart_object_metatable(context, v))
-			smart_object_cache[v] = smart_object
-		end
-		return smart_object
-	end
 	context.ui = type(opts.ui) == "table" and opts.ui or type(opts.ui) == "string" or mod.ui[opts.ui] or mod.ui.ansi
-	context.objects = setmetatable({},
-		{ __index = function(_, k) return make_smart_object(context.game.objects[k]) end })
 	context.null = mod.null
 	context.function_ = mod.function_
 	--[[@param backup? boolean]]
 	context.save = function(backup) mod.save(path, context.game, backup) end
+	--[[@param i integer]]
+	context.object = function(i) return context.game.objects[i] end
 	context.new_object = function(val)
 		val = val or {}
 		context.game.objects[#context.game.objects + 1] = val or {}
@@ -334,22 +301,36 @@ local plain_text_ui = mod.ui.plain_text
 plain_text_ui.container = join_with_space
 plain_text_ui.sentence = join_with_blank
 plain_text_ui.color = join_with_blank
+plain_text_ui.background_color = join_with_blank
 
 --[[ansi support for 8/16/256 colors can come later, quantization is hard]]
 ui.ansi = {}
 local ansi_ui = mod.ui.ansi
 ansi_ui.container = join_with_space
 ansi_ui.sentence = join_with_blank
-local truecolor_colorspace_processor = {}
-truecolor_colorspace_processor.rgb = function(t)
+local truecolor_foreground_colorspace_processor = {}
+truecolor_foreground_colorspace_processor.rgb = function(t)
 	return "\x1b[38;2;" ..
 			math.floor(t.red or 0) .. ";" .. math.floor(t.green or 0) .. ";" .. math.floor(t.blue or 0) .. "m"
 end
 ansi_ui.color = function(table)
 	local text = join_with_blank(table)
-	local processor = truecolor_colorspace_processor[table.space]
+	local processor = truecolor_foreground_colorspace_processor[table.space]
 	if processor and table.color then
-		--[[TODO: keep a stack of formatting info, when an inner `color` ends the outer `color` should still apply]]
+		--[[TODO: keep a stack of formatting info, when an inner `color` ends the outer `color` (and background_color) should still apply]]
+		text = processor(table.color) .. text .. "\x1b[0m"
+	end
+	return text
+end
+local truecolor_background_colorspace_processor = {}
+truecolor_background_colorspace_processor.rgb = function(t)
+	return "\x1b[48;2;" ..
+			math.floor(t.red or 0) .. ";" .. math.floor(t.green or 0) .. ";" .. math.floor(t.blue or 0) .. "m"
+end
+ansi_ui.background_color = function(table)
+	local text = join_with_blank(table)
+	local processor = truecolor_background_colorspace_processor[table.space]
+	if processor and table.color then
 		text = processor(table.color) .. text .. "\x1b[0m"
 	end
 	return text
@@ -401,6 +382,14 @@ html_ui.color = function(table)
 	end
 	return text
 end
+html_ui.background_color = function(table)
+	local text = join_with_blank(table)
+	local processor = css_colorspace_processor[table.space]
+	if processor and table.color then
+		text = "<span style=\"background-color: " .. processor(table.color) .. "\">" .. text .. "</span>"
+	end
+	return text
+end
 
 local normalize_command = { x = "exit", h = "help" }
 
@@ -423,6 +412,7 @@ else
 		if ui_renderer then ctx.ui = mod.ui[ui_renderer] end
 	end
 	_G.pretty_print = pretty_print
+	_G.ctx = ctx
 	for k, v in pairs(ctx) do _G[k] = v end
 	while true do
 		io.stdout:write("text_game> ")
@@ -444,6 +434,7 @@ game - full game state
 null - a non-nil "null" value, so that it shows up when iterating keys
 object - game.objects
 save() - saves game to the path from which it was loaded
+object(i) - get the object with id <i>
 new_object(val = {}) - add a new object to the list of objects
 define_properties(val, parent = nil, getters = nil, setters = nil) - add getters and setters to an object]])
 			else
@@ -495,4 +486,13 @@ next steps:
 low priority (taking features from lambdamoo):
 - permission controls - check for sandbox escapes
 - hashing for passwords
+- track number of objects created by each user
+- track cycles used by functions
+]]
+--[[
+low priority (other):
+- regular backups to a different file
+  - needs api support
+- regular backups to git
+
 ]]
