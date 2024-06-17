@@ -8,6 +8,10 @@ local print = print
 _G.io = nil
 _G.os = nil
 _G.print = nil
+--[[this is far from 100% bulletproof but it's a start]]
+local initialize_sandbox = function()
+	setmetatable(_G, { __newindex = function(_, k) io.stderr:write("error: cannot create new global: ", k, "\n") end })
+end
 
 mod.null = {}
 mod.metatable_symbol = {}
@@ -112,7 +116,9 @@ write_object_without_metatable = function(object, write, on_write_table, should_
 	write("{ ")
 	local length = #object
 	for k, v in pairs(object) do
-		if type(v) ~= "table" or is_function(v) or should_write_table(v, k, data) then
+		if type(v) == "table" and not is_function(v) and not should_write_table(v, k, data) then
+			if type(k) == "number" and k <= length then write("nil, ") end
+		else
 			if type(k) ~= "number" or k > length then write(as_key(k), " = ") end
 			if type(v) == "string" then
 				write("\"", escape(v), "\"")
@@ -292,13 +298,34 @@ mod.new_game = function() return { objects = {} } end
 local join_with_blank = function(parts) return table.concat(parts, "") end
 --[[@param parts string[] ]]
 local join_with_space = function(parts) return table.concat(parts, " ") end
+--[[@param parts string[] ]]
+local join_with_newline = function(parts) return table.concat(parts, "\n") end
+--[[@param parts string[] ]]
+local bullet_points = function(parts)
+	if #parts == 0 then return "" end
+	return " - " .. table.concat(parts, "\n - ")
+end
+--[[@param parts string[] ]]
+local numbered_points = function(parts)
+	local transformed_parts = {}
+	local pad_len = #tostring(#parts) + 1
+	for i = 1, #parts do
+		local i_s = tostring(i)
+		transformed_parts[i] = (" "):rep(pad_len - #i_s) .. i_s .. ". " .. parts[i]
+	end
+	return table.concat(transformed_parts, "\n")
+end
 
 mod.ui = {}
 local ui = mod.ui
 
 ui.plain_text = {}
 local plain_text_ui = mod.ui.plain_text
-plain_text_ui.container = join_with_space
+plain_text_ui.container = join_with_newline
+plain_text_ui.paragraph = join_with_space
+plain_text_ui.phrase = join_with_blank
+plain_text_ui.list = bullet_points
+plain_text_ui.numbered_list = numbered_points
 plain_text_ui.sentence = join_with_blank
 plain_text_ui.color = join_with_blank
 plain_text_ui.background_color = join_with_blank
@@ -306,7 +333,11 @@ plain_text_ui.background_color = join_with_blank
 --[[ansi support for 8/16/256 colors can come later, quantization is hard]]
 ui.ansi = {}
 local ansi_ui = mod.ui.ansi
-ansi_ui.container = join_with_space
+ansi_ui.container = join_with_newline
+ansi_ui.paragraph = join_with_space
+ansi_ui.phrase = join_with_blank
+ansi_ui.list = bullet_points
+ansi_ui.numbered_list = numbered_points
 ansi_ui.sentence = join_with_blank
 local truecolor_foreground_colorspace_processor = {}
 truecolor_foreground_colorspace_processor.rgb = function(t)
@@ -338,8 +369,28 @@ end
 
 --[[needs http and/or ws server to actually work since it needs to connect to the lua process]]
 ui.html = {}
+local add_html_list_items = function(parts, acc)
+	local offset = #acc
+	for i = 1, #parts do
+		acc[i + offset] = "<li>" .. parts[i] .. "</li>"
+	end
+end
 local html_ui = mod.ui.html
-html_ui.container = join_with_space
+html_ui.container = function(parts) return "<div>" .. table.concat(parts, "\n") .. "</div>" end
+html_ui.paragraph = function(parts) return "<p>" .. table.concat(parts, " ") .. "</p>" end
+html_ui.phrase = join_with_blank
+html_ui.list = function(parts)
+	local transformed_parts = { "<ul>" }
+	add_html_list_items(parts, transformed_parts)
+	transformed_parts[#transformed_parts + 1] = "</ul>"
+	return table.concat(transformed_parts, "\n")
+end
+html_ui.numbered_list = function(parts)
+	local transformed_parts = { "<ol>" }
+	add_html_list_items(parts, transformed_parts)
+	transformed_parts[#transformed_parts + 1] = "</ol>"
+	return table.concat(transformed_parts, "\n")
+end
 html_ui.sentence = join_with_blank
 local css_colorspace_processor = {}
 local css_colorspace_alpha = function(alpha)
@@ -414,6 +465,7 @@ else
 	_G.pretty_print = pretty_print
 	_G.ctx = ctx
 	for k, v in pairs(ctx) do _G[k] = v end
+	initialize_sandbox()
 	while true do
 		io.stdout:write("text_game> ")
 		local input = tostring(io.stdin:read("line"))
@@ -476,11 +528,14 @@ exiting on empty input is far from an ideal solution
 ]]
 --[[
 next steps:
+- player.room
 - moving around rooms
 - interacting with (mutating) rooms
 - inventory
 - eating
 - verbs/cli
+- wear and... unwear?
+- objects with their own verbs (both local (`obj verb target` and `verb obj`) and global (`verb` and `verb target`))
 ]]
 --[[
 low priority (taking features from lambdamoo):
