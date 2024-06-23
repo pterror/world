@@ -1,3 +1,3 @@
 .direnv
 saves
-bin/lovr*
+deps/lovr*
