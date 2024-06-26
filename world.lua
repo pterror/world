@@ -42,7 +42,7 @@ local make_context = function(path, opts)
 	return context
 end
 
-local replacements = { ["\r"] = "\\r", ["\n"] = "\\n", ["\t"] = "\\t", ["\""] = "\\\"" }
+local replacements = { ["\r"] = "\\r", ["\n"] = "\\n", ["\t"] = "\\t", ["\""] = "\\\"", ["\\"] = "\\\\" }
 
 --[[@param s string]]
 local escape = function(s) return s:gsub("[\r\n\t\"]", replacements) end
@@ -87,7 +87,11 @@ local is_keyword = {
 local as_key = function(k)
 	if type(k) ~= "string" then return "[" .. tostring(k) .. "]" end
 	local escaped = escape(k)
-	if escaped == k and not k:find("%s") and not is_keyword[k] then return k else return "[\"" .. escaped .. "\"]" end
+	if escaped == k and not k:find("%W") and not k:find("^%d") and not is_keyword[k] then
+		return k
+	else
+		return "[\"" .. escaped .. "\"]"
+	end
 end
 
 local write_object

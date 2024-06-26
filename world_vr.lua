@@ -1,11 +1,5 @@
 local gen = require("lovr.gen")
 
---[[make luals happy]]
-if false then
-	--[[@diagnostic disable-next-line: lowercase-global]]
-	lovr = lovr
-end
-
 local sky
 
 --[[
@@ -17,7 +11,6 @@ lovr.draw = function(pass)
 	pass:skybox(sky)
 end
 ]]
-
 local model
 function lovr.load()
 	local bytes = gen.model_from_tris({
