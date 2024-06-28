@@ -12,6 +12,7 @@ end
 local shl = function(cmd) --[[@param cmd string]]
 	--[[@return string?]]
 	local f = io.popen(cmd)
+	--[[@return string?]]
 	return function()
 		if not f then return end
 		local ret = f:read("*line")
@@ -25,6 +26,18 @@ local to_snake_case = function(s) --[[@param s string]]
 end
 
 local replacements = { ["\r"] = "\\r", ["\n"] = "\\n", ["\t"] = "\\t", ["\""] = "\\\"", ["\\"] = "\\\\" }
+
+local is_tensor_function_prefix = { vec = true, mat = true, newVec = true, newMat = true, quat = true }
+
+local field_x = { name = "x", value = "0.0" }
+local field_y = { name = "y", value = "0.0" }
+local field_z = { name = "z", value = "0.0" }
+local field_w = { name = "w", value = "0.0" }
+local fields_for_class = {
+	Vec2 = { field_x, field_y },
+	Vec3 = { field_x, field_y, field_z },
+	Vec4 = { field_x, field_y, field_z, field_w },
+}
 
 --[[@param s string]]
 local escape = function(s) return s:gsub("[\r\n\t\"\\]", replacements) end
@@ -83,7 +96,7 @@ local types = io.open(root .. "/lovr/_types.lua", "w")
 if not types then return end
 local write = function(...) types:write(...) end --[[@param ... string|number]]
 write([=[
---[[@diagnostic disable: redefined-local, unused-local]]
+--[[@diagnostic disable: redefined-local, unused-local, lowercase-global]]
 
 --[[make luals happy]]
 if false then
@@ -118,7 +131,7 @@ local builtin_type_values = {
 local value_of_type = function(arg)
 	local value = builtin_type_values[arg.type]
 	if value then return value end
-	if arg.type:find("^[A-Z]") then return arg.type end
+	if arg.type:find("^[A-Z]") then return arg.type .. "_class" end
 	io.stderr:write("error: unknown type ", arg.type, "\n")
 end
 
@@ -131,15 +144,15 @@ local write_related_internal = function(names)
 		else
 			write(name)
 		end
-		write(")  ]]\n")
+		write(")]]\n")
 	end
 end
 
---[[@param names string[] ]]
+--[[@param names? string[] ]]
 --[[@param extra_names? string[] ]]
 local write_related = function(names, extra_names)
 	if (not names or #names == 0) and (not extra_names or #extra_names == 0) then return end
-	write("\t--[[### See also  ]]\n")
+	write("\t--[[### See also]]\n")
 	if names then write_related_internal(names) end
 	if extra_names then write_related_internal(extra_names) end
 end
@@ -172,9 +185,14 @@ write_type = function(arg, write_, id, header)
 			write_inner("\t--[[@class ", id, "]]\n")
 			for _, entry in ipairs(arg.table) do
 				local entry_name = is_array and entry.name:gsub("^%[%]%.?", "") or entry.name
-				write_inner("\t--[[@field ", entry_name, " ")
+				local is_optional = entry.default or (id == "lovr_graphics_new_buffer_format" and entry_name == "stride")
+				write_inner("\t--[[@field ", entry_name, is_optional and "? " or " ")
 				write_type(entry, write_inner, id .. "_" .. entry_name, header)
-				write_inner(" ]]\n")
+				if entry.default ~= nil then
+					write_inner(" default=`", entry.default, "`]]\n")
+				else
+					write_inner(" ]]\n")
+				end
 			end
 		end
 	elseif arg.type == "*" then
@@ -192,11 +210,13 @@ local is_arg_optional = function(arg, arg_name) return arg.default ~= nil or arg
 --[[@param data table]]
 --[[@param id string]]
 --[[@param header string]]
-local write_function_type = function(overload, data, id, header)
+--[[@param class_name? string]]
+local write_function_type = function(overload, data, id, header, class_name)
 	if overload.deprecated then return end
 	write("fun(")
+	if class_name then write("self: lovr_", to_snake_case(class_name:gsub("_class$", ""))) end
 	for j, arg_name in ipairs(overload.arguments) do
-		if j > 1 then write(", ") end
+		if j > 1 or class_name then write(", ") end
 		local arg = data.arguments[arg_name]
 		arg_name = to_arg_name(arg_name)
 		write(arg_name, is_arg_optional(arg, arg_name) and "?: " or ": ")
@@ -219,7 +239,10 @@ end
 --[[@param is_cb? boolean]]
 local write_function = function(data, name, id, extra_related, is_cb)
 	local id_raw = id
+	local class_name = name:find(":") and (name:match("^([^:]+)"))
 	id = "lovr_" .. id
+	local var_name = name
+	name = name:gsub("_class", "")
 	local header = [=[
 	--[[https://lovr.org/docs/]=] .. name .. [=[  ]]
 	--[[see also:  ]]
@@ -239,7 +262,7 @@ local write_function = function(data, name, id, extra_related, is_cb)
 			arg_name = to_arg_name(arg_name)
 			write("\t--[[@param ", arg_name, is_arg_optional(arg, arg_name) and "? " or " ")
 			write_type(arg, write, id .. "_" .. arg_name, header)
-			if arg.default then write(" default=", arg.default) end
+			if arg.default then write(" default=`", arg.default, "`") end
 			write("]]\n")
 		end
 		for _, ret_name in ipairs(first_overload.returns) do
@@ -256,11 +279,11 @@ local write_function = function(data, name, id, extra_related, is_cb)
 			local overload = data.variants[i]
 			if not overload.deprecated then
 				write("\t--[[@overload ")
-				write_function_type(overload, data, id, header)
+				write_function_type(overload, data, id, header, class_name)
 				write("]]\n")
 			end
 		end
-		write("\tfunction ", name, "(")
+		write("\tfunction ", var_name, "(")
 		for i, arg_name in ipairs(first_overload.arguments) do
 			if i > 1 then write(", ") end
 			write(to_arg_name(arg_name))
@@ -281,11 +304,12 @@ for cb_path in shl("ls " .. docs .. "api/lovr/callbacks/") do
 	local data = dofile(docs .. "api/lovr/callbacks/" .. cb_path)
 	write_function(data, "lovr." .. cb_name, to_snake_case(cb_name), nil, true)
 end
-write("\t--[[@diagnostic disable-next-line: lowercase-global]]\n")
 write("\tlovr = lovr\n")
 write("\n")
 flush_table_docs()
 local mods_to_skip = { Object = true, http = true, utf8 = true }
+write("\t--[[@class lovr_object]]\n")
+write("\tlocal Object_class\n")
 for mod_path in shl("ls " .. docs .. "api/lovr/") do
 	--[[forward declare dummy variables for classes and enums]]
 	for member_path in shl("ls " .. docs .. "api/lovr/" .. mod_path) do
@@ -293,7 +317,27 @@ for mod_path in shl("ls " .. docs .. "api/lovr/") do
 		local is_enum = member_path:find("%.lua$")
 		if member_path:find("^[A-Z]") then
 			write("\t--[[@", (is_enum and "type" or "class"), " lovr_", to_snake_case(member_name), "]]\n")
-			write("\tlocal ", member_name, "\n")
+			write("\tlocal ", member_name, "_class\n")
+		end
+	end
+end
+do
+	local member_path = "Object"
+	local member_name = member_path
+	local extra_related = { member_path }
+	local data = dofile(docs .. "api/lovr/" .. member_path .. "/init.lua")
+	write("\t--[[https://lovr.org/docs/", member_path, "  ]]\n")
+	write("\t--[[", data.summary, "  ]]\n")
+	write_related(data, nil)
+	write("\t--[[@class lovr_", to_snake_case(member_name), "]]\n")
+	write("\n")
+	local class_name = member_name .. "_class"
+	for method_path in shl("ls " .. docs .. "api/lovr/" .. member_path) do
+		if method_path ~= "init.lua" then
+			local method_name = method_path:gsub("%.lua$", "")
+			local method_data = dofile(docs .. "api/lovr/" .. member_path .. "/" .. method_path)
+			write_function(method_data, class_name .. ":" .. method_name,
+				to_snake_case(member_name) .. "_" .. to_snake_case(method_name), extra_related)
 		end
 	end
 end
@@ -325,7 +369,15 @@ for mod_path in shl("ls " .. docs .. "api/lovr/") do
 					write("\n")
 				elseif member_name ~= "init" then
 					write_function(data, "lovr." .. mod_path .. "." .. member_name,
-						mod_path .. "_" .. to_snake_case(member_name))
+						mod_path .. "_" .. to_snake_case(member_name), extra_related)
+					if mod_path == "math" then
+						local is_tensor_function = is_tensor_function_prefix[member_name:gsub("%d+$", "")]
+						if is_tensor_function then
+							local member_global_name = member_name:gsub("^new", "")
+							write_function(data, member_global_name,
+								mod_path .. "_" .. to_snake_case(member_name), extra_related)
+						end
+					end
 				end
 				flush_table_docs()
 			else
@@ -334,14 +386,24 @@ for mod_path in shl("ls " .. docs .. "api/lovr/") do
 				write("\t--[[https://lovr.org/docs/", member_path, "  ]]\n")
 				write("\t--[[", data.summary, "  ]]\n")
 				write_related(data, nil)
-				write("\t--[[@class lovr_", to_snake_case(member_name), "]]\n")
+				write("\t--[[@class lovr_", to_snake_case(member_name), ": lovr_object]]\n")
 				write("\n")
+				local class_name = member_name .. "_class"
 				for method_path in shl("ls " .. docs .. "api/lovr/" .. mod_path .. "/" .. member_path) do
 					if method_path ~= "init.lua" then
 						local method_name = method_path:gsub("%.lua$", "")
 						local method_data = dofile(docs .. "api/lovr/" .. mod_path .. "/" .. member_path .. "/" .. method_path)
-						write_function(method_data, member_name .. ":" .. method_name,
-							mod_path .. "_" .. to_snake_case(member_name) .. "_" .. to_snake_case(method_name), extra_related, false)
+						write_function(method_data, class_name .. ":" .. method_name,
+							mod_path .. "_" .. to_snake_case(member_name) .. "_" .. to_snake_case(method_name), extra_related)
+					end
+				end
+
+				local fields = fields_for_class[member_name]
+				if fields then
+					for _, field in ipairs(fields) do
+						write_related(nil, extra_related)
+						write("\t", class_name, ".", field.name, " = ", field.value, "\n")
+						write("\n")
 					end
 				end
 			end
@@ -350,6 +412,15 @@ for mod_path in shl("ls " .. docs .. "api/lovr/") do
 	end
 end
 write([=[
+	--[[https://lovr.org/docs/lovr.headset.getHands  ]]
+	--[[### See also]]
+	--[[* [`lovr.headset`](lua://lovr.headset)]]
+	--[[@enum lovr_hand]]
+	local lovr_hand = {
+		left = "hand/left",
+		right = "hand/right",
+	}
+
 	--[[https://lovr.org/docs/http  ]]
 	--[[@class lovr_http]]
 	local http = {}

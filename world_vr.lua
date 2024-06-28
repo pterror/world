@@ -1,16 +1,5 @@
+--[=[
 local gen = require("lovr.gen")
-
-local sky
-
---[[
-lovr.load = function()
-	sky = lovr.graphics.newTexture(gen.sky())
-end
-
-lovr.draw = function(pass)
-	pass:skybox(sky)
-end
-]]
 local model
 function lovr.load()
 	local bytes = gen.model_from_tris({
@@ -42,7 +31,25 @@ end
 function lovr.draw(pass)
 	pass:draw(model, 0, 2, -3, 2)
 end
+]=]
 
---[[TODO:
-- serialization for formats: obj, glb, binary stl
-]]
+local model --[[@type lovr_model]]
+local shader --[[@type lovr_shader]]
+
+function lovr.load()
+	model = lovr.graphics.newModel("saves/test.glb")
+	shader = require("lovr.lighting.pbr")()
+	-- shader = require("lovr.lighting.phong")()
+end
+
+function lovr.draw(pass)
+	pass:setCullMode("back")
+	pass:setViewCull(true)
+	pass:setShader(shader)
+	pass:draw(model, 0, 0, -3, 2)
+
+	for _, hand in ipairs(lovr.headset.getHands()) do
+		local x, y, z = lovr.headset.getPosition(hand)
+		pass:sphere(x, y, z, .1)
+	end
+end
