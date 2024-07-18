@@ -10,6 +10,13 @@ local print = print
 _G.io = nil
 _G.os = nil
 _G.print = nil
+string.dump = nil
+local original_load = load
+load = function(chunk, chunkname, _, env)
+	return original_load(chunk, chunkname, "t", env)
+end
+-- loadstring = function() end
+_G.loadfile = nil
 --[[this is far from 100% bulletproof but it's a start]]
 local initialize_sandbox = function()
 	setmetatable(_G, { __newindex = function(_, k) io.stderr:write("error: cannot create new global: ", k, "\n") end })

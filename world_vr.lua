@@ -37,7 +37,7 @@ local model --[[@type lovr_model]]
 local shader --[[@type lovr_shader]]
 
 function lovr.load()
-	model = lovr.graphics.newModel("saves/test.glb")
+	model = lovr.graphics.newModel("saves/meow.glb")
 	shader = require("lovr.lighting.pbr")()
 	-- shader = require("lovr.lighting.phong")()
 end
