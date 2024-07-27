@@ -1,3 +1,6 @@
+LovrUIRoot = "deps/"
+local UI = require("lovr.ui")
+
 --[=[
 local gen = require("lovr.gen")
 local model
@@ -33,23 +36,145 @@ function lovr.draw(pass)
 end
 ]=]
 
-local model --[[@type lovr_model]]
+local world --[[@type lovr_world]]
+local player --[[@type lovrx_humanoid]]
 local shader --[[@type lovr_shader]]
+local basic_shader --[[@type lovr_shader]]
+local spherical_harmonics --[[@type lovr_buffer]]
+local colliders = {} --[[@type table<{[1]: number,[2]: number,[3]: number,[4]: number,[5]: number,[6]: number}, true>]]
+
+local make_collider = function(...)
+	local dims = { ... }
+	colliders[dims] = true
+	world:newBoxCollider(...):setKinematic(true)
+end
+
+local plane_thickness = 0.05
+
+--[[@param x number]]
+--[[@param y number]]
+--[[@param z number]]
+--[[@param w number]]
+--[[@param h number]]
+--[[@param d number]]
+local make_room = function(x, y, z, w, h, d)
+	local p = plane_thickness
+	local hp = p / 2
+	make_collider(x - hp, y + h / 2, z + d / 2, p, h, d)
+	make_collider(x + w, y + h / 2, z + d / 2, p, h, d)
+	make_collider(x + w / 2, y - hp, z + d / 2, w, p, d)
+	make_collider(x + w / 2, y + h, z + d / 2, w, p, d)
+	make_collider(x + w / 2, y + h / 2, z - hp, w, h, p)
+	make_collider(x + w / 2, y + h / 2, z + d, w, h, p)
+end
+
+--[[@class lovrx_humanoid]]
+local Humanoid = {}
+Humanoid.__index = Humanoid
+--[[@param opts { model: string|lovr_blob|lovr_model_data; pos?: lovr_vec3; scale?: number; }]]
+Humanoid.new = function(self, opts)
+	local model = lovr.graphics.newModel(opts.model)
+	--[[@class lovrx_humanoid]]
+	local result = {
+		model = model,
+		pos = opts.pos or Vec3(0, 0, 0),
+		scale = opts.scale or 1
+	}
+	return setmetatable(result, self)
+end
+
+Humanoid.pose = function(self, pose)
+	--[[TODO: ik]]
+end
+
+--[[@param pass lovr_pass]]
+Humanoid.draw = function(self, pass)
+	-- self.model:setNodeOrientation("Head", math.sin(lovr.timer.getTime() * 3.14), 0, 1, 0)
+	-- self.model:setNodeOrientation("Neck", math.sin(lovr.timer.getTime() * 3.14) * 0.5, 0, 0, 1)
+	-- self.model:setNodeOrientation("Chest", math.sin(lovr.timer.getTime() * 3.14) * 0.5, 1, 0, 0)
+	-- self.model:setNodeOrientation("Left arm", math.sin(lovr.timer.getTime() * 3.14) * 0.5 - 0.5, 1, 0, 0)
+	-- self.model:setNodeOrientation("Left elbow", math.sin(lovr.timer.getTime() * 3.14) * 0.5 - 0.5, 1, 0, 0)
+	-- self.model:setNodeOrientation("Left shoulder", math.sin(lovr.timer.getTime() * 3.14) * 0.5, 1, 0, 0)
+	pass:draw(self.model, self.pos, self.scale)
+	pass:setColor(0xd040d0)
+	local t = lovr.timer.getTime() * 3.14
+	local target = vec3(0.5 + math.sin(t) * 0.5, 1.8 + math.cos(t) * 0.5, -2.5)
+	pass:sphere(target, .1)
+	pass:setColor(0x40d0d0)
+	local lh = self.pos + vec3(self.model:getNodePosition("Left wrist")) * self.scale
+	pass:sphere(lh, .1)
+end
 
 function lovr.load()
-	model = lovr.graphics.newModel("saves/meow.glb")
+	UI.Init()
+	--[[@diagnostic disable-next-line: missing-parameter]]
+	world = lovr.physics.newWorld()
+	player = Humanoid:new({
+		model = "saves/meow.glb",
+		pos = Vec3(0, 0, -3),
+		--[[TODO: temporary just to make sure everything works with scaling.]]
+		scale = 2,
+	})
 	shader = require("lovr.lighting.pbr")()
-	-- shader = require("lovr.lighting.phong")()
+	--[[FIXME: phong shading has issues with draw order or something]]
+	basic_shader = require("lovr.lighting.basic")()
+	print("nodes:")
+	for i = 1, player.model:getNodeCount() do
+		print(i, player.model:getNodeName(i))
+	end
+
+	--[[ground]]
+	-- make_collider(0, -plane_thickness, 0, 50, plane_thickness, 50)
+	--[[room]]
+	do
+		make_room(-5, 0, -5, 10, 5, 10)
+	end
+	spherical_harmonics = lovr.graphics.newBuffer({ "vec3", layout = "std140" }, {
+		{ 0.611764907836914,  0.599504590034485,  0.479980736970901 },
+		{ 0.659514904022217,  0.665349841117859,  0.567680120468140 },
+		{ 0.451633930206299,  0.450751245021820,  0.355226665735245 },
+		{ -0.044383134692907, -0.053154513239861, -0.019974749535322 },
+		{ -0.053045745939016, -0.057957146316767, -0.011247659102082 },
+		{ 0.485697060823441,  0.490428507328033,  0.397530466318130 },
+		{ -0.023690477013588, -0.024272611364722, -0.021886156871915 },
+		{ -0.179465517401695, -0.181243389844894, -0.141314014792442 },
+		{ -0.144527092576027, -0.143508568406105, -0.122757166624069 }
+	})
+end
+
+function lovr.update()
+	UI.InputInfo()
 end
 
 function lovr.draw(pass)
+	pass:setColor(0xffffff)
 	pass:setCullMode("back")
 	pass:setViewCull(true)
 	pass:setShader(shader)
-	pass:draw(model, 0, 0, -3, 2)
+	pass:send("sphericalHarmonics", spherical_harmonics)
+	player:draw(pass)
+
+	pass:setColor(0x808080)
+
+	pass:setShader(basic_shader)
+	for collider in pairs(colliders) do
+		local x, y, z, width, height, depth = unpack(collider)
+		pass:box(x, y, z, width, height, depth)
+	end
 
 	for _, hand in ipairs(lovr.headset.getHands()) do
 		local x, y, z = lovr.headset.getPosition(hand)
 		pass:sphere(x, y, z, .1)
 	end
+
+	local lh_pose = lovr.math.newMat4(player.model:getNodeTransform("Left wrist"))
+	lh_pose:rotate(-math.pi / 2, 1, 0, 0)
+	UI.NewFrame(pass)
+	UI.Begin("window", lh_pose)
+	--[[FIXME: where is this :skull:]]
+	UI.Label("left wrist")
+	UI.End(pass)
+	local ui_passes = UI.RenderFrame(pass)
+	table.insert(ui_passes, pass)
+	return lovr.graphics.submit(ui_passes)
 end

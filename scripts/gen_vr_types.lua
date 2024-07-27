@@ -27,7 +27,12 @@ end
 
 local replacements = { ["\r"] = "\\r", ["\n"] = "\\n", ["\t"] = "\\t", ["\""] = "\\\"", ["\\"] = "\\\\" }
 
-local is_tensor_function_prefix = { vec = true, mat = true, newVec = true, newMat = true, quat = true }
+local is_operator_name = { add = true, sub = true, mul = true, div = true }
+local is_tensor_class = { Vec = true, Mat = true, Quat = true }
+local is_tensor_function_prefix = { vec = true, mat = true, quat = true, newVec = true, newMat = true, newQuat = true }
+for k in pairs(is_tensor_class) do
+	is_tensor_function_prefix[k:lower()] = true; is_tensor_function_prefix[k:gsub("^new", "")] = true
+end
 
 local field_x = { name = "x", value = "0.0" }
 local field_y = { name = "y", value = "0.0" }
@@ -211,16 +216,21 @@ local is_arg_optional = function(arg, arg_name) return arg.default ~= nil or arg
 --[[@param id string]]
 --[[@param header string]]
 --[[@param class_name? string]]
-local write_function_type = function(overload, data, id, header, class_name)
+--[[@param is_operator? boolean]]
+local write_function_type = function(overload, data, id, header, class_name, is_operator)
 	if overload.deprecated then return end
-	write("fun(")
-	if class_name then write("self: lovr_", to_snake_case(class_name:gsub("_class$", ""))) end
+	write(is_operator and "(" or "fun(")
+	if class_name and not is_operator then write("self: lovr_", to_snake_case(class_name:gsub("_class$", ""))) end
 	for j, arg_name in ipairs(overload.arguments) do
-		if j > 1 or class_name then write(", ") end
-		local arg = data.arguments[arg_name]
-		arg_name = to_arg_name(arg_name)
-		write(arg_name, is_arg_optional(arg, arg_name) and "?: " or ": ")
-		write_type(arg, write, id .. "_" .. arg_name, header)
+		if j == 1 or not is_operator then
+			if j > 1 or (class_name and not is_operator) then write(", ") end
+			local arg = data.arguments[arg_name]
+			if not is_operator then
+				arg_name = to_arg_name(arg_name)
+				write(arg_name, is_arg_optional(arg, arg_name) and "?: " or ": ")
+			end
+			write_type(arg, write, id .. "_" .. arg_name, header)
+		end
 	end
 	write(")")
 	for j, ret_name in ipairs(overload.returns) do
@@ -386,15 +396,38 @@ for mod_path in shl("ls " .. docs .. "api/lovr/") do
 				write("\t--[[https://lovr.org/docs/", member_path, "  ]]\n")
 				write("\t--[[", data.summary, "  ]]\n")
 				write_related(data, nil)
-				write("\t--[[@class lovr_", to_snake_case(member_name), ": lovr_object]]\n")
+				local class_name = "lovr_" .. to_snake_case(member_name)
+				local class_var = member_name .. "_class"
+				write("\t--[[@class ", class_name, ": lovr_object]]\n")
+				for method_path in shl("ls " .. docs .. "api/lovr/" .. mod_path .. "/" .. member_path) do
+					local method_name = method_path:gsub("%.lua$", "")
+					if is_operator_name[method_name] then
+						local method_var = class_var .. ":" .. method_name
+						local header = [=[
+	--[[https://lovr.org/docs/]=] .. method_var .. [=[  ]]
+	--[[see also:  ]]
+	--[[[`]=] .. method_var .. "`](lua://" .. method_var .. ")  ]]\n"
+						local method_data = dofile(docs .. "api/lovr/" .. mod_path .. "/" .. member_path .. "/" .. method_path)
+						for _, overload in ipairs(method_data.variants) do
+							--[[the arg count check is not necessary since for lovr :add(n) is the same as :add(n, n, n)]]
+							if not overload.deprecated --[[and #overload.arguments == 1]] then
+								write("\t--[[@operator ", method_name, " ")
+								local method_id = mod_path .. "_" .. to_snake_case(member_name) .. "_" .. to_snake_case(method_name)
+								write_function_type(overload, method_data,
+									method_id, header, member_name, true)
+								write("]]\n")
+							end
+						end
+					end
+				end
 				write("\n")
-				local class_name = member_name .. "_class"
 				for method_path in shl("ls " .. docs .. "api/lovr/" .. mod_path .. "/" .. member_path) do
 					if method_path ~= "init.lua" then
 						local method_name = method_path:gsub("%.lua$", "")
 						local method_data = dofile(docs .. "api/lovr/" .. mod_path .. "/" .. member_path .. "/" .. method_path)
-						write_function(method_data, class_name .. ":" .. method_name,
-							mod_path .. "_" .. to_snake_case(member_name) .. "_" .. to_snake_case(method_name), extra_related)
+						local method_id = mod_path .. "_" .. to_snake_case(member_name) .. "_" .. to_snake_case(method_name)
+						write_function(method_data, class_var .. ":" .. method_name,
+							method_id, extra_related)
 					end
 				end
 
@@ -402,7 +435,7 @@ for mod_path in shl("ls " .. docs .. "api/lovr/") do
 				if fields then
 					for _, field in ipairs(fields) do
 						write_related(nil, extra_related)
-						write("\t", class_name, ".", field.name, " = ", field.value, "\n")
+						write("\t", class_var, ".", field.name, " = ", field.value, "\n")
 						write("\n")
 					end
 				end

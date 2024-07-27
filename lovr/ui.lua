@@ -19,7 +19,7 @@
 local UI = {}
 
 --[[@type string]]
-local root = (...):match("(.-)[^%./]+$"):gsub("%.", "/")
+local root = LovrUIRoot or (...):match("(.-)[^%./]+$"):gsub("%.", "/")
 
 --[[@class lovrui_color]]
 --[[@field [1] integer red]]
