@@ -1,5 +1,6 @@
 LovrUIRoot = "deps/"
 local UI = require("lovr.ui")
+local ik = require("lovr.fabrik")
 
 --[=[
 local gen = require("lovr.gen")
@@ -68,23 +69,85 @@ local make_room = function(x, y, z, w, h, d)
 	make_collider(x + w / 2, y + h / 2, z + d, w, h, p)
 end
 
+--[[@param model lovr_model]]
+--[[@param name string]]
+local match_node = function(model, name)
+	name = name:lower():gsub("_", " ")
+	for i = 1, model:getNodeCount() do
+		local node_name = model:getNodeName(i):lower():gsub("_", " ")
+		if node_name:match(name) then
+			return i
+		end
+	end
+end
+
 --[[@class lovrx_humanoid]]
 local Humanoid = {}
 Humanoid.__index = Humanoid
---[[@param opts { model: string|lovr_blob|lovr_model_data; pos?: lovr_vec3; scale?: number; }]]
+--[[@param opts { model: string|lovr_blob|lovr_model_data; position?: lovr_vec3; scale?: number; orientation?: lovr_quat }]]
 Humanoid.new = function(self, opts)
 	local model = lovr.graphics.newModel(opts.model)
+	local left_wrist_id = match_node(model, "left wrist")
+	local right_wrist_id = match_node(model, "right wrist")
+	local left_ankle_id = match_node(model, "left ankle")
+	local right_ankle_id = match_node(model, "right ankle")
 	--[[@class lovrx_humanoid]]
 	local result = {
 		model = model,
-		pos = opts.pos or Vec3(0, 0, 0),
+		left_arm_ik = ik.chain({
+			type = "chain",
+			target = Vec3(model:getNodePosition(left_wrist_id)),
+			pull_strength = 0.1,
+			tip_bone_id = left_wrist_id,
+			root_bone_id = match_node(model, "left shoulder"),
+		}),
+		right_arm_ik = ik.chain({
+			type = "chain",
+			target = Vec3(model:getNodePosition(right_wrist_id)),
+			pull_strength = 0.1,
+			tip_bone_id = right_wrist_id,
+			root_bone_id = match_node(model, "right shoulder"),
+		}),
+		left_leg_ik = ik.chain({
+			type = "chain",
+			target = Vec3(model:getNodePosition(left_ankle_id)),
+			pull_strength = 0.1,
+			tip_bone_id = left_ankle_id,
+			root_bone_id = match_node(model, "left leg"),
+		}),
+		right_leg_ik = ik.chain({
+			type = "chain",
+			target = Vec3(model:getNodePosition(right_ankle_id)),
+			pull_strength = 0.1,
+			tip_bone_id = right_ankle_id,
+			root_bone_id = match_node(model, "right leg"),
+		}),
+		position = opts.position or Vec3(0, 0, 0),
+		orientation = opts.orientation or Quat(0, 0, 1, 0),
 		scale = opts.scale or 1
 	}
+	result.ik = ik.new(model, {
+		result.left_arm_ik,
+		result.right_arm_ik,
+		result.left_leg_ik,
+		result.right_leg_ik,
+	})
 	return setmetatable(result, self)
 end
 
-Humanoid.pose = function(self, pose)
-	--[[TODO: ik]]
+local limb_to_node = {
+	left_arm = "left_arm_ik",
+	right_arm = "right_arm_ik",
+	left_leg = "left_leg_ik",
+	right_leg = "right_leg_ik",
+}
+
+--[[@param limb "left_arm"|"right_arm"|"left_leg"|"right_leg"]]
+--[[@param target lovr_vec3]]
+Humanoid.poseLimb = function(self, limb, target)
+	--[[@type lovrx_fabrik_chain_node]]
+	local ik_node = self[limb_to_node[limb]]
+	ik_node.target = target
 end
 
 --[[@param pass lovr_pass]]
@@ -95,14 +158,18 @@ Humanoid.draw = function(self, pass)
 	-- self.model:setNodeOrientation("Left arm", math.sin(lovr.timer.getTime() * 3.14) * 0.5 - 0.5, 1, 0, 0)
 	-- self.model:setNodeOrientation("Left elbow", math.sin(lovr.timer.getTime() * 3.14) * 0.5 - 0.5, 1, 0, 0)
 	-- self.model:setNodeOrientation("Left shoulder", math.sin(lovr.timer.getTime() * 3.14) * 0.5, 1, 0, 0)
-	pass:draw(self.model, self.pos, self.scale)
 	pass:setColor(0xd040d0)
 	local t = lovr.timer.getTime() * 3.14
-	local target = vec3(0.5 + math.sin(t) * 0.5, 1.8 + math.cos(t) * 0.5, -2.5)
-	pass:sphere(target, .1)
+	local target = Vec3(0.5 + math.sin(t) * 0.5, 1.8 + math.cos(t) * 0.5, -2.5)
+	pass:sphere(target, 0.1)
 	pass:setColor(0x40d0d0)
-	local lh = self.pos + vec3(self.model:getNodePosition("Left wrist")) * self.scale
-	pass:sphere(lh, .1)
+	self:poseLimb("left_arm", target)
+	local lh = vec3(self.position) + vec3(self.model:getNodePosition("Left wrist")) * self.scale
+	pass:sphere(lh, 0.1)
+	local transform = mat4(self.position, self.orientation):scale(self.scale)
+	self.ik:update(transform)
+	pass:setColor(0xffffff)
+	pass:draw(self.model, self.position, self.scale, self.orientation)
 end
 
 function lovr.load()
@@ -111,17 +178,13 @@ function lovr.load()
 	world = lovr.physics.newWorld()
 	player = Humanoid:new({
 		model = "saves/meow.glb",
-		pos = Vec3(0, 0, -3),
+		position = Vec3(0, 0, -3),
 		--[[TODO: temporary just to make sure everything works with scaling.]]
 		scale = 2,
 	})
 	shader = require("lovr.lighting.pbr")()
 	--[[FIXME: phong shading has issues with draw order or something]]
 	basic_shader = require("lovr.lighting.basic")()
-	print("nodes:")
-	for i = 1, player.model:getNodeCount() do
-		print(i, player.model:getNodeName(i))
-	end
 
 	--[[ground]]
 	-- make_collider(0, -plane_thickness, 0, 50, plane_thickness, 50)
