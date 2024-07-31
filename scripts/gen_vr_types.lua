@@ -247,19 +247,21 @@ end
 --[[@param id string]]
 --[[@param extra_related? string[] ]]
 --[[@param is_cb? boolean]]
-local write_function = function(data, name, id, extra_related, is_cb)
+--[[@param docs_name? string]]
+local write_function = function(data, name, id, extra_related, is_cb, docs_name)
 	local id_raw = id
 	local class_name = name:find(":") and (name:match("^([^:]+)"))
 	id = "lovr_" .. id
 	local var_name = name
 	name = name:gsub("_class", "")
+	docs_name = docs_name or name
 	local header = [=[
-	--[[https://lovr.org/docs/]=] .. name .. [=[  ]]
-	--[[see also:  ]]
-	--[[[`]=] .. name .. "`](lua://" .. name .. ")  ]]\n"
+	--[[https://lovr.org/docs/]=] .. docs_name .. [=[  ]]
+	--[[### See also]]
+	--[[* [`]=] .. docs_name .. "`](lua://" .. docs_name .. ")  ]]\n"
 	local first_overload = data.variants[1]
 	if not first_overload then io.stderr:write("error: no overloads: ", name, "\n") end
-	write("\t--[[https://lovr.org/docs/", name, "  ]]\n")
+	write("\t--[[https://lovr.org/docs/", docs_name, "  ]]\n")
 	write("\t--[[", data.summary, "  ]]\n")
 	write_related(data.related, extra_related)
 	if is_cb then
@@ -385,7 +387,8 @@ for mod_path in shl("ls " .. docs .. "api/lovr/") do
 						if is_tensor_function then
 							local member_global_name = member_name:gsub("^new", "")
 							write_function(data, member_global_name,
-								mod_path .. "_" .. to_snake_case(member_name), extra_related)
+								mod_path .. "_" .. to_snake_case(member_name), extra_related, false,
+								"lovr." .. mod_path .. "." .. member_name)
 						end
 					end
 				end
@@ -405,8 +408,8 @@ for mod_path in shl("ls " .. docs .. "api/lovr/") do
 						local method_var = class_var .. ":" .. method_name
 						local header = [=[
 	--[[https://lovr.org/docs/]=] .. method_var .. [=[  ]]
-	--[[see also:  ]]
-	--[[[`]=] .. method_var .. "`](lua://" .. method_var .. ")  ]]\n"
+	--[[### See also]]
+	--[[* [`]=] .. method_var .. "`](lua://" .. method_var .. ")  ]]\n"
 						local method_data = dofile(docs .. "api/lovr/" .. mod_path .. "/" .. member_path .. "/" .. method_path)
 						for _, overload in ipairs(method_data.variants) do
 							--[[the arg count check is not necessary since for lovr :add(n) is the same as :add(n, n, n)]]

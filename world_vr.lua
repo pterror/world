@@ -91,40 +91,44 @@ Humanoid.new = function(self, opts)
 	local right_wrist_id = match_node(model, "right wrist")
 	local left_ankle_id = match_node(model, "left ankle")
 	local right_ankle_id = match_node(model, "right ankle")
+	local position = opts.position or Vec3(0, 0, 0)
+	local orientation = opts.orientation or Quat(0, 0, 1, 0)
+	local scale = opts.scale or 1
+	local transform = mat4(position, vec3(scale), orientation)
 	--[[@class lovrx_humanoid]]
 	local result = {
 		model = model,
 		left_arm_ik = ik.chain({
 			type = "chain",
-			target = Vec3(model:getNodePosition(left_wrist_id)),
+			target = Vec3(transform * vec3(model:getNodePosition(left_wrist_id))),
 			pull_strength = 0.1,
 			tip_bone_id = left_wrist_id,
-			root_bone_id = match_node(model, "left shoulder"),
+			root_bone_id = match_node(model, "left arm"),
 		}),
 		right_arm_ik = ik.chain({
 			type = "chain",
-			target = Vec3(model:getNodePosition(right_wrist_id)),
+			target = Vec3(transform * vec3(model:getNodePosition(right_wrist_id))),
 			pull_strength = 0.1,
 			tip_bone_id = right_wrist_id,
-			root_bone_id = match_node(model, "right shoulder"),
+			root_bone_id = match_node(model, "right arm"),
 		}),
 		left_leg_ik = ik.chain({
 			type = "chain",
-			target = Vec3(model:getNodePosition(left_ankle_id)),
+			target = Vec3(transform * vec3(model:getNodePosition(left_ankle_id))),
 			pull_strength = 0.1,
 			tip_bone_id = left_ankle_id,
 			root_bone_id = match_node(model, "left leg"),
 		}),
 		right_leg_ik = ik.chain({
 			type = "chain",
-			target = Vec3(model:getNodePosition(right_ankle_id)),
+			target = Vec3(transform * vec3(model:getNodePosition(right_ankle_id))),
 			pull_strength = 0.1,
 			tip_bone_id = right_ankle_id,
 			root_bone_id = match_node(model, "right leg"),
 		}),
-		position = opts.position or Vec3(0, 0, 0),
-		orientation = opts.orientation or Quat(0, 0, 1, 0),
-		scale = opts.scale or 1
+		position = position,
+		orientation = orientation,
+		scale = scale
 	}
 	result.ik = ik.new(model, {
 		result.left_arm_ik,

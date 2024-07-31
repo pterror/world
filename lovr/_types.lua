@@ -166,8 +166,8 @@ if false then
 	lovr = lovr
 
 	--[[https://lovr.org/docs/lovr.conf  ]]
-	--[[see also:  ]]
-	--[[[`lovr.conf`](lua://lovr.conf)  ]]
+	--[[### See also]]
+	--[[* [`lovr.conf`](lua://lovr.conf)  ]]
 	--[[@class lovr_conf_t]]
 	--[[@field version string ]]
 	--[[@field identity string ]]
@@ -180,8 +180,8 @@ if false then
 	--[[@field window lovr_conf_t_window ]]
 
 	--[[https://lovr.org/docs/lovr.conf  ]]
-	--[[see also:  ]]
-	--[[[`lovr.conf`](lua://lovr.conf)  ]]
+	--[[### See also]]
+	--[[* [`lovr.conf`](lua://lovr.conf)  ]]
 	--[[@class lovr_conf_t_modules]]
 	--[[@field audio boolean ]]
 	--[[@field data boolean ]]
@@ -195,16 +195,16 @@ if false then
 	--[[@field timer boolean ]]
 
 	--[[https://lovr.org/docs/lovr.conf  ]]
-	--[[see also:  ]]
-	--[[[`lovr.conf`](lua://lovr.conf)  ]]
+	--[[### See also]]
+	--[[* [`lovr.conf`](lua://lovr.conf)  ]]
 	--[[@class lovr_conf_t_audio]]
 	--[[@field spatializer string ]]
 	--[[@field samplerate number ]]
 	--[[@field start boolean ]]
 
 	--[[https://lovr.org/docs/lovr.conf  ]]
-	--[[see also:  ]]
-	--[[[`lovr.conf`](lua://lovr.conf)  ]]
+	--[[### See also]]
+	--[[* [`lovr.conf`](lua://lovr.conf)  ]]
 	--[[@class lovr_conf_t_graphics]]
 	--[[@field debug boolean ]]
 	--[[@field vsync boolean ]]
@@ -213,8 +213,8 @@ if false then
 	--[[@field shadercache boolean ]]
 
 	--[[https://lovr.org/docs/lovr.conf  ]]
-	--[[see also:  ]]
-	--[[[`lovr.conf`](lua://lovr.conf)  ]]
+	--[[### See also]]
+	--[[* [`lovr.conf`](lua://lovr.conf)  ]]
 	--[[@class lovr_conf_t_headset]]
 	--[[@field drivers table<string,string|number> ]]
 	--[[@field supersample number ]]
@@ -225,14 +225,14 @@ if false then
 	--[[@field overlay boolean ]]
 
 	--[[https://lovr.org/docs/lovr.conf  ]]
-	--[[see also:  ]]
-	--[[[`lovr.conf`](lua://lovr.conf)  ]]
+	--[[### See also]]
+	--[[* [`lovr.conf`](lua://lovr.conf)  ]]
 	--[[@class lovr_conf_t_math]]
 	--[[@field globals boolean ]]
 
 	--[[https://lovr.org/docs/lovr.conf  ]]
-	--[[see also:  ]]
-	--[[[`lovr.conf`](lua://lovr.conf)  ]]
+	--[[### See also]]
+	--[[* [`lovr.conf`](lua://lovr.conf)  ]]
 	--[[@class lovr_conf_t_window]]
 	--[[@field width number ]]
 	--[[@field height number ]]
@@ -567,8 +567,8 @@ if false then
 	function lovr.audio.getDevices(type) return {} end
 
 	--[[https://lovr.org/docs/lovr.audio.getDevices  ]]
-	--[[see also:  ]]
-	--[[[`lovr.audio.getDevices`](lua://lovr.audio.getDevices)  ]]
+	--[[### See also]]
+	--[[* [`lovr.audio.getDevices`](lua://lovr.audio.getDevices)  ]]
 	--[[@class lovr_audio_get_devices_devices]]
 	--[[@field id userdata ]]
 	--[[@field name string ]]
@@ -659,8 +659,8 @@ if false then
 	function lovr.audio.newSource(filename, options) return Source_class end
 
 	--[[https://lovr.org/docs/lovr.audio.newSource  ]]
-	--[[see also:  ]]
-	--[[[`lovr.audio.newSource`](lua://lovr.audio.newSource)  ]]
+	--[[### See also]]
+	--[[* [`lovr.audio.newSource`](lua://lovr.audio.newSource)  ]]
 	--[[@class lovr_audio_new_source_options]]
 	--[[@field decode? boolean default=`false`]]
 	--[[@field pitchable? boolean default=`true`]]
@@ -2074,8 +2074,8 @@ if false then
 	}
 
 	--[[https://lovr.org/docs/ModelData:getMaterial  ]]
-	--[[see also:  ]]
-	--[[[`ModelData:getMaterial`](lua://ModelData:getMaterial)  ]]
+	--[[### See also]]
+	--[[* [`ModelData:getMaterial`](lua://ModelData:getMaterial)  ]]
 	--[[@class lovr_data_model_data_get_material_properties]]
 	--[[@field color table<string,string|number> ]]
 	--[[@field glow table<string,string|number> ]]
@@ -3254,8 +3254,8 @@ if false then
 	}
 
 	--[[https://lovr.org/docs/Buffer:getFormat  ]]
-	--[[see also:  ]]
-	--[[[`Buffer:getFormat`](lua://Buffer:getFormat)  ]]
+	--[[### See also]]
+	--[[* [`Buffer:getFormat`](lua://Buffer:getFormat)  ]]
 	--[[@class lovr_graphics_buffer_get_format_format]]
 	--[[@field name string ]]
 	--[[@field type unknown ]]
@@ -3624,8 +3624,8 @@ if false then
 	function lovr.graphics.getBuffer(size) return Buffer_class end
 
 	--[[https://lovr.org/docs/lovr.graphics.getBuffer  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.getBuffer`](lua://lovr.graphics.getBuffer)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.getBuffer`](lua://lovr.graphics.getBuffer)  ]]
 	--[[@class lovr_graphics_get_buffer_format]]
 	--[[@field layout? lovr_data_layout default=`packed`]]
 	--[[@field stride number ]]
@@ -3649,8 +3649,8 @@ if false then
 	function lovr.graphics.getDevice() return {} end
 
 	--[[https://lovr.org/docs/lovr.graphics.getDevice  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.getDevice`](lua://lovr.graphics.getDevice)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.getDevice`](lua://lovr.graphics.getDevice)  ]]
 	--[[@class lovr_graphics_get_device_device]]
 	--[[@field id number ]]
 	--[[@field vendor number ]]
@@ -3670,8 +3670,8 @@ if false then
 	function lovr.graphics.getFeatures() return {} end
 
 	--[[https://lovr.org/docs/lovr.graphics.getFeatures  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.getFeatures`](lua://lovr.graphics.getFeatures)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.getFeatures`](lua://lovr.graphics.getFeatures)  ]]
 	--[[@class lovr_graphics_get_features_features]]
 	--[[@field textureBC boolean ]]
 	--[[@field textureASTC boolean ]]
@@ -3694,8 +3694,8 @@ if false then
 	function lovr.graphics.getLimits() return {} end
 
 	--[[https://lovr.org/docs/lovr.graphics.getLimits  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.getLimits`](lua://lovr.graphics.getLimits)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.getLimits`](lua://lovr.graphics.getLimits)  ]]
 	--[[@class lovr_graphics_get_limits_limits]]
 	--[[@field textureSize2D number ]]
 	--[[@field textureSize3D number ]]
@@ -3742,15 +3742,15 @@ if false then
 	function lovr.graphics.getPass(type) return Pass_class end
 
 	--[[https://lovr.org/docs/lovr.graphics.getPass  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.getPass`](lua://lovr.graphics.getPass)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.getPass`](lua://lovr.graphics.getPass)  ]]
 	--[[@class lovr_graphics_get_pass_canvas]]
 	--[[@field depth lovr_graphics_get_pass_canvas_depth ]]
 	--[[@field samples? number default=`4`]]
 
 	--[[https://lovr.org/docs/lovr.graphics.getPass  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.getPass`](lua://lovr.graphics.getPass)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.getPass`](lua://lovr.graphics.getPass)  ]]
 	--[[@class lovr_graphics_get_pass_canvas_depth]]
 	--[[@field format? lovr_texture_format default=`'d32f'`]]
 	--[[@field texture lovr_texture ]]
@@ -4026,8 +4026,8 @@ if false then
 	}
 
 	--[[https://lovr.org/docs/Mesh:getVertexFormat  ]]
-	--[[see also:  ]]
-	--[[[`Mesh:getVertexFormat`](lua://Mesh:getVertexFormat)  ]]
+	--[[### See also]]
+	--[[* [`Mesh:getVertexFormat`](lua://Mesh:getVertexFormat)  ]]
 	--[[@class lovr_graphics_mesh_get_vertex_format_format]]
 	--[[@field [1] string ]]
 	--[[@field [2] lovr_data_type ]]
@@ -4715,8 +4715,8 @@ if false then
 	function lovr.graphics.newBuffer(size) return Buffer_class end
 
 	--[[https://lovr.org/docs/lovr.graphics.newBuffer  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.newBuffer`](lua://lovr.graphics.newBuffer)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.newBuffer`](lua://lovr.graphics.newBuffer)  ]]
 	--[[@class lovr_graphics_new_buffer_format]]
 	--[[@field layout? lovr_data_layout default=`packed`]]
 	--[[@field stride? number ]]
@@ -4746,8 +4746,8 @@ if false then
 	function lovr.graphics.newMaterial(properties) return Material_class end
 
 	--[[https://lovr.org/docs/lovr.graphics.newMaterial  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.newMaterial`](lua://lovr.graphics.newMaterial)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.newMaterial`](lua://lovr.graphics.newMaterial)  ]]
 	--[[@class lovr_graphics_new_material_properties]]
 	--[[@field color? lovr_vec4 default=`{ 1, 1, 1, 1 }`]]
 	--[[@field glow? lovr_vec4 default=`{ 0, 0, 0, 0 }`]]
@@ -4799,8 +4799,8 @@ if false then
 	function lovr.graphics.newModel(filename, options) return Model_class end
 
 	--[[https://lovr.org/docs/lovr.graphics.newModel  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.newModel`](lua://lovr.graphics.newModel)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.newModel`](lua://lovr.graphics.newModel)  ]]
 	--[[@class lovr_graphics_new_model_options]]
 	--[[@field mipmaps? boolean default=`true`]]
 	--[[@field materials? boolean default=`true`]]
@@ -4819,15 +4819,15 @@ if false then
 	function lovr.graphics.newPass(...) return Pass_class end
 
 	--[[https://lovr.org/docs/lovr.graphics.newPass  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.newPass`](lua://lovr.graphics.newPass)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.newPass`](lua://lovr.graphics.newPass)  ]]
 	--[[@class lovr_graphics_new_pass_canvas]]
 	--[[@field depth lovr_graphics_new_pass_canvas_depth ]]
 	--[[@field samples? number default=`4`]]
 
 	--[[https://lovr.org/docs/lovr.graphics.newPass  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.newPass`](lua://lovr.graphics.newPass)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.newPass`](lua://lovr.graphics.newPass)  ]]
 	--[[@class lovr_graphics_new_pass_canvas_depth]]
 	--[[@field format? lovr_texture_format default=`'d32f'`]]
 	--[[@field texture lovr_texture ]]
@@ -4842,8 +4842,8 @@ if false then
 	function lovr.graphics.newSampler(parameters) return Sampler_class end
 
 	--[[https://lovr.org/docs/lovr.graphics.newSampler  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.newSampler`](lua://lovr.graphics.newSampler)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.newSampler`](lua://lovr.graphics.newSampler)  ]]
 	--[[@class lovr_graphics_new_sampler_parameters]]
 	--[[@field filter? lovr_graphics_new_sampler_parameters_filter default=`'linear'`]]
 	--[[@field wrap? lovr_graphics_new_sampler_parameters_wrap default=`'repeat'`]]
@@ -4852,16 +4852,16 @@ if false then
 	--[[@field mipmaprange table<string,string|number> ]]
 
 	--[[https://lovr.org/docs/lovr.graphics.newSampler  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.newSampler`](lua://lovr.graphics.newSampler)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.newSampler`](lua://lovr.graphics.newSampler)  ]]
 	--[[@class lovr_graphics_new_sampler_parameters_filter]]
 	--[[@field [1] lovr_filter_mode ]]
 	--[[@field [2] lovr_filter_mode ]]
 	--[[@field [3] lovr_filter_mode ]]
 
 	--[[https://lovr.org/docs/lovr.graphics.newSampler  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.newSampler`](lua://lovr.graphics.newSampler)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.newSampler`](lua://lovr.graphics.newSampler)  ]]
 	--[[@class lovr_graphics_new_sampler_parameters_wrap]]
 	--[[@field [1] lovr_wrap_mode ]]
 	--[[@field [2] lovr_wrap_mode ]]
@@ -4883,8 +4883,8 @@ if false then
 	function lovr.graphics.newShader(vertex, fragment, options) return Shader_class end
 
 	--[[https://lovr.org/docs/lovr.graphics.newShader  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.newShader`](lua://lovr.graphics.newShader)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.newShader`](lua://lovr.graphics.newShader)  ]]
 	--[[@class lovr_graphics_new_shader_options]]
 	--[[@field flags table<string,string|number> ]]
 	--[[@field label string ]]
@@ -4906,8 +4906,8 @@ if false then
 	function lovr.graphics.newTexture(filename, options) return Texture_class end
 
 	--[[https://lovr.org/docs/lovr.graphics.newTexture  ]]
-	--[[see also:  ]]
-	--[[[`lovr.graphics.newTexture`](lua://lovr.graphics.newTexture)  ]]
+	--[[### See also]]
+	--[[* [`lovr.graphics.newTexture`](lua://lovr.graphics.newTexture)  ]]
 	--[[@class lovr_graphics_new_texture_options]]
 	--[[@field type lovr_texture_type ]]
 	--[[@field format? lovr_texture_format default=`'rgba8'`]]
@@ -5909,15 +5909,15 @@ if false then
 	}
 
 	--[[https://lovr.org/docs/Pass:getCanvas  ]]
-	--[[see also:  ]]
-	--[[[`Pass:getCanvas`](lua://Pass:getCanvas)  ]]
+	--[[### See also]]
+	--[[* [`Pass:getCanvas`](lua://Pass:getCanvas)  ]]
 	--[[@class lovr_graphics_pass_get_canvas_canvas]]
 	--[[@field depth unknown ]]
 	--[[@field samples number ]]
 
 	--[[https://lovr.org/docs/Pass:getStats  ]]
-	--[[see also:  ]]
-	--[[[`Pass:getStats`](lua://Pass:getStats)  ]]
+	--[[### See also]]
+	--[[* [`Pass:getStats`](lua://Pass:getStats)  ]]
 	--[[@class lovr_graphics_pass_get_stats_stats]]
 	--[[@field draws number ]]
 	--[[@field computes number ]]
@@ -5928,8 +5928,8 @@ if false then
 	--[[@field gpuTime number ]]
 
 	--[[https://lovr.org/docs/Pass:setCanvas  ]]
-	--[[see also:  ]]
-	--[[[`Pass:setCanvas`](lua://Pass:setCanvas)  ]]
+	--[[### See also]]
+	--[[* [`Pass:setCanvas`](lua://Pass:setCanvas)  ]]
 	--[[@class lovr_graphics_pass_set_canvas_canvas]]
 	--[[@field depth? unknown default=`d32f`]]
 	--[[@field samples? number default=`4`]]
@@ -7330,8 +7330,8 @@ if false then
 	function lovr.headset.newModel(device, options) return Model_class end
 
 	--[[https://lovr.org/docs/lovr.headset.newModel  ]]
-	--[[see also:  ]]
-	--[[[`lovr.headset.newModel`](lua://lovr.headset.newModel)  ]]
+	--[[### See also]]
+	--[[* [`lovr.headset.newModel`](lua://lovr.headset.newModel)  ]]
 	--[[@class lovr_headset_new_model_options]]
 	--[[@field animated? boolean default=`false`]]
 
@@ -7919,7 +7919,7 @@ if false then
 	--[[@overload fun(d: number): lovr_mat4]]
 	function lovr.math.mat4() return Mat4_class end
 
-	--[[https://lovr.org/docs/mat4  ]]
+	--[[https://lovr.org/docs/lovr.math.mat4  ]]
 	--[[Create a temporary Mat4.  ]]
 	--[[### See also]]
 	--[[* [`lovr.math.newMat4`](lua://lovr.math.newMat4)]]
@@ -7963,7 +7963,7 @@ if false then
 	--[[@overload fun(d: number): lovr_mat4]]
 	function lovr.math.newMat4() return Mat4_class end
 
-	--[[https://lovr.org/docs/Mat4  ]]
+	--[[https://lovr.org/docs/lovr.math.newMat4  ]]
 	--[[Create a new Mat4.  ]]
 	--[[### See also]]
 	--[[* [`lovr.math.mat4`](lua://lovr.math.mat4)]]
@@ -7998,7 +7998,7 @@ if false then
 	--[[@overload fun(): lovr_quat]]
 	function lovr.math.newQuat(angle, ax, ay, az, raw) return Quat_class end
 
-	--[[https://lovr.org/docs/Quat  ]]
+	--[[https://lovr.org/docs/lovr.math.newQuat  ]]
 	--[[Create a new Quat.  ]]
 	--[[### See also]]
 	--[[* [`lovr.math.quat`](lua://lovr.math.quat)]]
@@ -8040,7 +8040,7 @@ if false then
 	--[[@overload fun(u: lovr_vec2): lovr_vec2]]
 	function lovr.math.newVec2(x, y) return Vec2_class end
 
-	--[[https://lovr.org/docs/Vec2  ]]
+	--[[https://lovr.org/docs/lovr.math.newVec2  ]]
 	--[[Create a new Vec2.  ]]
 	--[[### See also]]
 	--[[* [`lovr.math.vec2`](lua://lovr.math.vec2)]]
@@ -8069,7 +8069,7 @@ if false then
 	--[[@overload fun(q: lovr_quat): lovr_vec3]]
 	function lovr.math.newVec3(x, y, z) return Vec3_class end
 
-	--[[https://lovr.org/docs/Vec3  ]]
+	--[[https://lovr.org/docs/lovr.math.newVec3  ]]
 	--[[Create a new Vec3.  ]]
 	--[[### See also]]
 	--[[* [`lovr.math.vec3`](lua://lovr.math.vec3)]]
@@ -8100,7 +8100,7 @@ if false then
 	--[[@overload fun(u: lovr_vec4): lovr_vec4]]
 	function lovr.math.newVec4(x, y, z, w) return Vec4_class end
 
-	--[[https://lovr.org/docs/Vec4  ]]
+	--[[https://lovr.org/docs/lovr.math.newVec4  ]]
 	--[[Create a new Vec4.  ]]
 	--[[### See also]]
 	--[[* [`lovr.math.vec4`](lua://lovr.math.vec4)]]
@@ -8245,7 +8245,7 @@ if false then
 	--[[@overload fun(): lovr_quat]]
 	function lovr.math.quat(angle, ax, ay, az, raw) return Quat_class end
 
-	--[[https://lovr.org/docs/quat  ]]
+	--[[https://lovr.org/docs/lovr.math.quat  ]]
 	--[[Create a temporary Quat.  ]]
 	--[[### See also]]
 	--[[* [`lovr.math.newQuat`](lua://lovr.math.newQuat)]]
@@ -8525,7 +8525,7 @@ if false then
 	--[[@overload fun(u: lovr_vec2): lovr_vec2]]
 	function lovr.math.vec2(x, y) return Vec2_class end
 
-	--[[https://lovr.org/docs/vec2  ]]
+	--[[https://lovr.org/docs/lovr.math.vec2  ]]
 	--[[Create a temporary Vec2.  ]]
 	--[[### See also]]
 	--[[* [`lovr.math.newVec2`](lua://lovr.math.newVec2)]]
@@ -8756,7 +8756,7 @@ if false then
 	--[[@overload fun(q: lovr_quat): lovr_vec3]]
 	function lovr.math.vec3(x, y, z) return Vec3_class end
 
-	--[[https://lovr.org/docs/vec3  ]]
+	--[[https://lovr.org/docs/lovr.math.vec3  ]]
 	--[[Create a temporary Vec3.  ]]
 	--[[### See also]]
 	--[[* [`lovr.math.newVec3`](lua://lovr.math.newVec3)]]
@@ -8971,7 +8971,7 @@ if false then
 	--[[@overload fun(u: lovr_vec4): lovr_vec4]]
 	function lovr.math.vec4(x, y, z, w) return Vec4_class end
 
-	--[[https://lovr.org/docs/vec4  ]]
+	--[[https://lovr.org/docs/lovr.math.vec4  ]]
 	--[[Create a temporary Vec4.  ]]
 	--[[### See also]]
 	--[[* [`lovr.math.newVec4`](lua://lovr.math.newVec4)]]
@@ -10785,8 +10785,8 @@ if false then
 	function lovr.physics.newWorld(settings) return World_class end
 
 	--[[https://lovr.org/docs/lovr.physics.newWorld  ]]
-	--[[see also:  ]]
-	--[[[`lovr.physics.newWorld`](lua://lovr.physics.newWorld)  ]]
+	--[[### See also]]
+	--[[* [`lovr.physics.newWorld`](lua://lovr.physics.newWorld)  ]]
 	--[[@class lovr_physics_new_world_settings]]
 	--[[@field tags? table<string,string|number> default=`{}`]]
 	--[[@field staticTags? table<string,string|number> default=`{}`]]
@@ -11835,8 +11835,8 @@ if false then
 	function lovr.system.getCoreCount() return 0 end
 
 	--[[https://lovr.org/docs/World:getCallbacks  ]]
-	--[[see also:  ]]
-	--[[[`World:getCallbacks`](lua://World:getCallbacks)  ]]
+	--[[### See also]]
+	--[[* [`World:getCallbacks`](lua://World:getCallbacks)  ]]
 	--[[@class lovr_physics_world_get_callbacks_callbacks]]
 	--[[@field filter function ]]
 	--[[@field enter function ]]
@@ -11844,8 +11844,8 @@ if false then
 	--[[@field contact function ]]
 
 	--[[https://lovr.org/docs/World:setCallbacks  ]]
-	--[[see also:  ]]
-	--[[[`World:setCallbacks`](lua://World:setCallbacks)  ]]
+	--[[### See also]]
+	--[[* [`World:setCallbacks`](lua://World:setCallbacks)  ]]
 	--[[@class lovr_physics_world_set_callbacks_callbacks]]
 	--[[@field filter function ]]
 	--[[@field enter function ]]
@@ -11979,8 +11979,8 @@ if false then
 	function lovr.system.openWindow(options) end
 
 	--[[https://lovr.org/docs/lovr.system.openWindow  ]]
-	--[[see also:  ]]
-	--[[[`lovr.system.openWindow`](lua://lovr.system.openWindow)  ]]
+	--[[### See also]]
+	--[[* [`lovr.system.openWindow`](lua://lovr.system.openWindow)  ]]
 	--[[@class lovr_system_open_window_options]]
 	--[[@field width? number default=`720`]]
 	--[[@field height? number default=`800`]]

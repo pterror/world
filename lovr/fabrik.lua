@@ -75,8 +75,9 @@ end
 
 --[[@param bone_id number]]
 Fabrik.initializeBoneDirection = function(self, bone_id)
-	self.bones[bone_id].start_direction = Vec3(vec3(self.skeleton:getNodePosition(bone_id)) -
-		vec3(self.skeleton:getNodePosition(self.skeleton:getNodeParent(bone_id))))
+	local diretio = vec3(self.skeleton:getNodePosition(bone_id)) -
+			vec3(self.skeleton:getNodePosition(self.skeleton:getNodeParent(bone_id)))
+	self.bones[bone_id].start_direction = Vec3(diretio)
 	for _, child_id in ipairs(self.skeleton:getNodeChildren(bone_id)) do
 		self:initializeBoneDirection(child_id)
 	end
@@ -86,8 +87,8 @@ end
 --[[@param bone_id number]]
 Fabrik.addBone = function(self, model, bone_id)
 	local parent_id = model:getNodeParent(bone_id)
-	local position = Vec3(model:getNodePosition(bone_id))
-	local rotation = Quat(model:getNodeOrientation(bone_id))
+	local position = vec3(model:getNodePosition(bone_id))
+	local rotation = quat(model:getNodeOrientation(bone_id))
 	local direction = vec3_zero
 	local preexisting_children = {} --[[@type number[] ]]
 	--[[If a parent exists, immediately solve the distance from it to child, as well as link them]]
@@ -98,26 +99,27 @@ Fabrik.addBone = function(self, model, bone_id)
 	for child_id, bone in pairs(self.bones) do
 		if bone.parent == bone_id then
 			table.insert(preexisting_children, child_id)
-			bone.start_direction = Vec3(vec3(bone.position) - position)
+			local direction2 = vec3(bone.position) - position
+			bone.start_direction = Vec3(direction2)
 			bone.length = bone.start_direction:length()
 		end
 	end
 	self.bones[bone_id] = {
 		parent              = parent_id,
 		children            = preexisting_children,
-		position            = position,
+		position            = Vec3(position),
 		length              = direction:length(),
 		length_multiplier   = 1.0,
-		rotation            = rotation,
-		start_rotation      = rotation,
-		start_direction     = Vec3(direction:normalize()),
-		weighted_vector_sum = vec3_zero,
+		rotation            = Quat(rotation),
+		start_rotation      = Quat(rotation),
+		start_direction     = Vec3(direction),
+		weighted_vector_sum = Vec3(),
 		weight_sum          = 0.0,
 		modifier_flags      = modifier.none,
 	}
 	if bone_id == self.skeleton:getRootNode() then
 		table.insert(self.roots, bone_id)
-		self.bones[bone_id].initial_position = position
+		self.bones[bone_id].initial_position = Vec3(position)
 	end
 end
 
@@ -144,34 +146,19 @@ local calc_next = function(from, to, length)
 	return from + ((to - from):normalize() * length)
 end
 
---[[@param from lovr_vec3]]
---[[@param to lovr_vec3]]
-local from_to_rotation = function(from, to)
-	local k_cos_theta = from:dot(to)
-	local k = math.sqrt(math.pow(from:length(), 2.0) * math.pow(to:length(), 2.0))
-	local axis = vec3(from):cross(to)
+local rotate_vecs = { forward = vec3_forward, backward = vec3_back, right = vec3_right, left = vec3_left }
 
-	if k_cos_theta == -1 then
-		--[[180 degree rotation around any orthogonal vector]]
-		return quat(1, 0, 0, 0)
-	elseif k_cos_theta == 1 then
-		return quat(0, 0, 0, 1)
-	end
-
-	return quat(axis.x, axis.y, axis.z, k_cos_theta + k):normalize()
-end
-
-local rotate_vecs      = { forward = vec3_forward, backward = vec3_back, right = vec3_right, left = vec3_left }
+--[[@param rotation lovr_quat]]
 --[[@param pivot lovr_vec3]]
 --[[@param target lovr_vec3]]
 --[[@param side "forward"|"backward"|"right"|"left"]]
 local rotate_along_axis = function(rotation, pivot, target, side)
-	local normal = vec3(rotation) * vec3_up
+	local normal = rotation * vec3_up
 	local d = normal:dot(pivot)
-	local p = vec3(target)
-	local proj_p = p - vec3(normal) * (normal:dot(p) - d)
-	p = vec3(rotation) * rotate_vecs[side] + pivot
-	local proj_v = p - vec3(normal) * (normal:dot(p) - d)
+	local p = target
+	local proj_p = p - normal * (normal:dot(p) - d)
+	p = rotation * rotate_vecs[side] + pivot
+	local proj_v = p - normal * (normal:dot(p) - d)
 	local angle = signed_angle(proj_v - pivot, proj_p - pivot, normal)
 	return quat(normal, angle) * rotation
 end
@@ -273,11 +260,11 @@ end
 --[[@param self lovrx_fabrik]]
 --[[@param fork_bind lovrx_fabrik_fork_bind_node]]
 evaluators.fork_bind = function(self, fork_bind)
-	fork_bind.length_1 = (vec3(self.bones[fork_bind.bone_1].position) - self.bones[fork_bind.bone_target].position)
+	fork_bind.length_1 = (self.bones[fork_bind.bone_1].position - self.bones[fork_bind.bone_target].position)
 			:length()
-	fork_bind.length_2 = (vec3(self.bones[fork_bind.bone_2].position) - self.bones[fork_bind.bone_target].position)
+	fork_bind.length_2 = (self.bones[fork_bind.bone_2].position - self.bones[fork_bind.bone_target].position)
 			:length()
-	fork_bind.length_3 = (vec3(self.bones[fork_bind.bone_3].position) - self.bones[fork_bind.bone_target].position)
+	fork_bind.length_3 = (self.bones[fork_bind.bone_3].position - self.bones[fork_bind.bone_target].position)
 			:length()
 
 	fork_bind.bind_id = #self.drivers.fork_binds
@@ -288,24 +275,24 @@ end
 --[[@param self lovrx_fabrik]]
 --[[@param cage lovrx_fabrik_cage_bind_node]]
 evaluators.cage_bind = function(self, cage)
-	cage.b1b2_length = (vec3(self.bones[cage.backbone_1].position) - self.bones[cage.backbone_2].position)
+	cage.b1b2_length = (self.bones[cage.backbone_1].position - self.bones[cage.backbone_2].position)
 			:length()
-	cage.b1t1_length = (vec3(self.bones[cage.backbone_1].position) - self.bones[cage.target_bone_1].position)
+	cage.b1t1_length = (self.bones[cage.backbone_1].position - self.bones[cage.target_bone_1].position)
 			:length()
-	cage.b1t2_length = (vec3(self.bones[cage.backbone_1].position) - self.bones[cage.target_bone_2].position)
+	cage.b1t2_length = (self.bones[cage.backbone_1].position - self.bones[cage.target_bone_2].position)
 			:length()
-	cage.b2t1_length = (vec3(self.bones[cage.backbone_2].position) - self.bones[cage.target_bone_1].position)
+	cage.b2t1_length = (self.bones[cage.backbone_2].position - self.bones[cage.target_bone_1].position)
 			:length()
-	cage.b2t2_length = (vec3(self.bones[cage.backbone_2].position) - self.bones[cage.target_bone_2].position)
+	cage.b2t2_length = (self.bones[cage.backbone_2].position - self.bones[cage.target_bone_2].position)
 			:length()
-	cage.t1t2_length = (vec3(self.bones[cage.target_bone_1].position) - self.bones[cage.target_bone_2].position)
+	cage.t1t2_length = (self.bones[cage.target_bone_1].position - self.bones[cage.target_bone_2].position)
 			:length()
 
-	cage.b2_correction_length = (vec3(self.bones[cage.backbone_2].position) - self.bones[cage.backbone_2_correction].position)
+	cage.b2_correction_length = (self.bones[cage.backbone_2].position - self.bones[cage.backbone_2_correction].position)
 			:length()
-	cage.t1_correction_length = (vec3(self.bones[cage.target_bone_1].position) - self.bones[cage.target_bone_1_correction].position)
+	cage.t1_correction_length = (self.bones[cage.target_bone_1].position - self.bones[cage.target_bone_1_correction].position)
 			:length()
-	cage.t2_correction_length = (vec3(self.bones[cage.target_bone_2].position) - self.bones[cage.target_bone_2_correction].position)
+	cage.t2_correction_length = (self.bones[cage.target_bone_2].position - self.bones[cage.target_bone_2_correction].position)
 			:length()
 
 	cage.bind_id = #self.drivers.cage_binds
@@ -570,21 +557,21 @@ Fabrik.solveLookAt = function(self, bone_id, target, side, spin_override)
 
 	--[[for some reason, target_dir is only normalized for up/down/forward]]
 	if side == "up" then
-		rotation = from_to_rotation(start_dir, target_dir:normalize()) *
+		rotation = Quat(start_dir, target_dir:normalize()) *
 				self.bones[self.bones[bone_id].parent].start_rotation
 		spin_angle = spin_override * deg2rad
 	elseif side == "down" then
-		rotation = from_to_rotation(start_dir, target_dir:normalize() * -1) *
+		rotation = Quat(start_dir, target_dir:normalize() * -1) *
 				self.bones[self.bones[bone_id].parent].start_rotation
 		spin_angle = spin_override * deg2rad
 	else
-		local rot_axis = vec3(start_dir):cross(target_dir):normalize()
+		local rot_axis = start_dir:cross(target_dir):normalize()
 		local a = self.bones[bone_id].length / 2.0
 		local b = target_dir:length()
 		local rot_angle = -math.acos(math.max(-1.0, math.min(a / b, 1.0)))
 		--[[Solve bone rotation around the pivot]]
 
-		rotation = from_to_rotation(start_dir, quat(rot_angle, unpack(rot_axis)) * target_dir) *
+		rotation = quat(start_dir, quat(rot_angle, rot_axis.x, rot_axis.y, rot_axis.z) * target_dir) *
 				self.bones[self.bones[bone_id].parent].start_rotation
 
 		local normal = rotation * vec3_up
@@ -607,10 +594,10 @@ Fabrik.solveLookAt = function(self, bone_id, target, side, spin_override)
 		end
 	end
 	self.bones[self.bones[bone_id].parent].rotation =
-			Quat(quat(rotation * vec3_up, spin_angle) * rotation)
+			Quat(quat(quat(rotation) * vec3_up, spin_angle) * rotation)
 	self.bones[bone_id].position =
 			Vec3(pivot +
-				(rotation * vec3(self.bones[bone_id].start_direction):normalize()) *
+				(quat(rotation) * vec3(self.bones[bone_id].start_direction):normalize()) *
 				self.bones[bone_id].length)
 end
 
@@ -779,7 +766,7 @@ Fabrik.solvePole = function(self, root_id, tip_id, target, side)
 		--[[Point vector Y at the next bone]]
 		start_dir = self.bones[current_bone].start_direction
 		target_dir = (vec3(self.bones[next_bone].position) - self.bones[current_bone].position):normalize()
-		rot_quat = from_to_rotation(start_dir, target_dir)
+		rot_quat = Quat(start_dir, target_dir)
 
 		--[[Point side vector towards the target]]
 		self.bones[current_bone].rotation =
@@ -838,41 +825,46 @@ Fabrik.solveForwards = function(self, root_id, origin)
 		elseif bit.band(modifier_flags, modifier.damped_transform) ~= 0 then
 			if self.bones[current_bone].modifier_master ~= current_bone then
 				local data = assert(self.bones[current_bone].damped_transform)
-				local target = vec3(self.bones[previous_bone].position) +
-						((vec3(self.bones[self.bones[self.bones[current_bone].modifier_master].parent].rotation) * vec3(self.bones[current_bone].start_direction):normalize()) *
+				local target = self.bones[previous_bone].position +
+						((self.bones[self.bones[self.bones[current_bone].modifier_master].parent].rotation * self.bones[current_bone].start_direction:normalize()) *
 							self.bones[current_bone].length)
 				local force = (target - self.bones[current_bone].position) * data.stiffness
 				force.y = force.y - data.gravity
 				local acceleration = force / data.mass
-				self.bones[current_bone].velocity = Vec3(vec3(self.bones[current_bone].velocity) +
+				self.bones[current_bone].velocity = Vec3(self.bones[current_bone].velocity +
 					acceleration * (1.0 - data.damping))
 				self.bones[current_bone].position =
 						Vec3(calc_next(self.bones[previous_bone].position,
-							vec3(self.bones[current_bone].position) + self.bones[current_bone].velocity + force,
+							self.bones[current_bone].position + self.bones[current_bone].velocity + force,
 							self.bones[current_bone].length))
 			end
 		end
-
 
 		--[[CALC OWN ROTATION]]
 		if previous_bone ~= nil and bit.band(modifier_flags, modifier.look_at) == 0 then --[[and self.bones[previous_bone].parent ~= nil then]]
 			local rotation = quat()
 			if #self.bones[previous_bone].children > 1 then
+				local a, b, c, d = 0, 0, 0, 0
 				local wsum = 0.0
 				local weight
 				for _, child_id in ipairs(self.bones[previous_bone].children) do
 					weight = self.bones[child_id].weight_sum
 					if weight == 0 then weight = 1 end
 					wsum = wsum + weight
-					local delta = (vec3(self.bones[child_id].position) - self.bones[previous_bone].position):normalize()
-					local new_rotation = from_to_rotation(self.bones[previous_bone].start_direction, delta)
-					--[[dunno why this one was + but the one at the end of the block was already *]]
-					rotation = rotation * new_rotation:slerp(quat_zero, 1 - weight) --[[rotation, then new_rotation * weight]]
+					local new_direction = (self.bones[child_id].position - self.bones[previous_bone].position):normalize()
+					local new_rotation = quat(self.bones[previous_bone].start_direction:normalize(), new_direction)
+					local na, nb, nc, nd = new_rotation:unpack(true)
+					--[[new_rotation * weight]]
+					na, nb, nc, nd = na * weight, nb * weight, nc * weight, nd * weight
+					--[[rotation + new_rotation]]
+					a, b, c, d = a + na, b + nb, c + nc, d + nd
 				end
-				rotation = rotation:slerp(quat_zero, 1 - 1 / wsum) --[[rotation / wsum]]
+				--[[rotation / wsym]]
+				a, b, c, d = a / wsum, b / wsum, c / wsum, d / wsum
+				rotation:set(a, b, c, d)
 			else
-				local delta = (vec3(self.bones[current_bone].position) - self.bones[previous_bone].position):normalize()
-				rotation = from_to_rotation(self.bones[current_bone].start_direction, delta)
+				local new_direction = (self.bones[current_bone].position - self.bones[previous_bone].position):normalize()
+				rotation = quat(self.bones[current_bone].start_direction:normalize(), new_direction)
 			end
 			self.bones[previous_bone].rotation = Quat(rotation * self.bones[previous_bone].start_rotation)
 		end
@@ -906,10 +898,8 @@ Fabrik.solveBackwards = function(self, root_id, tip_id, target, weight)
 		bone.weighted_vector_sum = Vec3(bone.weighted_vector_sum + current_target * weight) --[[current_weight]]
 		bone.position = Vec3(bone.weighted_vector_sum / bone.weight_sum)
 		--[[end set biased bone position]]
-		current_target = calc_next(self.bones[current_bone].position,
-			self.bones[self.bones[current_bone].parent].position,
-			self.bones[current_bone].length)
-		current_bone = self.bones[current_bone].parent
+		current_target = calc_next(bone.position, self.bones[bone.parent].position, bone.length)
+		current_bone = bone.parent
 	end
 end
 
