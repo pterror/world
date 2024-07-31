@@ -1,6 +1,6 @@
 LovrUIRoot = "deps/"
 local UI = require("lovr.ui")
-local ik = require("lovr.fabrik")
+local IK = require("lovr.fabrik")
 
 --[=[
 local gen = require("lovr.gen")
@@ -94,76 +94,78 @@ Humanoid.new = function(self, opts)
 	local position = opts.position or Vec3(0, 0, 0)
 	local orientation = opts.orientation or Quat(0, 0, 1, 0)
 	local scale = opts.scale or 1
-	local transform = mat4(position, vec3(scale), orientation)
+	--[[@type table<world_vr_ik_id, world_vr_ik>]]
+	local ik = {
+		left_arm = {
+			dirty = false,
+			target = Vec3(vec3(model:getNodePosition(left_wrist_id))),
+			start_id = match_node(model, "left arm"),
+			end_id = left_wrist_id,
+		},
+		right_arm = {
+			dirty = false,
+			target = Vec3(vec3(model:getNodePosition(right_wrist_id))),
+			start_id = match_node(model, "right arm"),
+			end_id = right_wrist_id,
+		},
+		left_leg = {
+			dirty = false,
+			target = Vec3(vec3(model:getNodePosition(left_ankle_id))),
+			start_id = match_node(model, "left leg"),
+			end_id = left_ankle_id,
+		},
+		right_leg = {
+			dirty = false,
+			target = Vec3(vec3(model:getNodePosition(right_ankle_id))),
+			start_id = match_node(model, "right leg"),
+			end_id = right_ankle_id,
+		},
+	}
 	--[[@class lovrx_humanoid]]
 	local result = {
 		model = model,
-		left_arm_ik = ik.chain({
-			type = "chain",
-			target = Vec3(transform * vec3(model:getNodePosition(left_wrist_id))),
-			pull_strength = 0.1,
-			tip_bone_id = left_wrist_id,
-			root_bone_id = match_node(model, "left arm"),
-		}),
-		right_arm_ik = ik.chain({
-			type = "chain",
-			target = Vec3(transform * vec3(model:getNodePosition(right_wrist_id))),
-			pull_strength = 0.1,
-			tip_bone_id = right_wrist_id,
-			root_bone_id = match_node(model, "right arm"),
-		}),
-		left_leg_ik = ik.chain({
-			type = "chain",
-			target = Vec3(transform * vec3(model:getNodePosition(left_ankle_id))),
-			pull_strength = 0.1,
-			tip_bone_id = left_ankle_id,
-			root_bone_id = match_node(model, "left leg"),
-		}),
-		right_leg_ik = ik.chain({
-			type = "chain",
-			target = Vec3(transform * vec3(model:getNodePosition(right_ankle_id))),
-			pull_strength = 0.1,
-			tip_bone_id = right_ankle_id,
-			root_bone_id = match_node(model, "right leg"),
-		}),
+		ik = ik,
 		position = position,
 		orientation = orientation,
-		scale = scale
+		scale = scale,
+		ik_options = {
+			max_iterations = 10,
+			epsilon = 0.0001,
+		},
 	}
-	result.ik = ik.new(model, {
-		result.left_arm_ik,
-		result.right_arm_ik,
-		result.left_leg_ik,
-		result.right_leg_ik,
-	})
 	return setmetatable(result, self)
 end
 
-local limb_to_node = {
-	left_arm = "left_arm_ik",
-	right_arm = "right_arm_ik",
-	left_leg = "left_leg_ik",
-	right_leg = "right_leg_ik",
-}
+--[[@alias world_vr_ik_id "left_arm"|"right_arm"|"left_leg"|"right_leg"]]
+--[[@class world_vr_ik]]
+--[[@field dirty boolean]]
+--[[@field target lovr_vec3]]
+--[[@field start_id integer]]
+--[[@field end_id integer]]
 
 --[[@param limb "left_arm"|"right_arm"|"left_leg"|"right_leg"]]
 --[[@param target lovr_vec3]]
 Humanoid.poseLimb = function(self, limb, target)
-	--[[@type lovrx_fabrik_chain_node]]
-	local ik_node = self[limb_to_node[limb]]
-	ik_node.target = Vec3(target)
+	local ik  = self.ik[limb]
+	ik.dirty  = true
+	ik.target = Vec3(target)
 end
 
 --[[@param pass lovr_pass]]
 Humanoid.draw = function(self, pass)
 	local target = vec3(lovr.headset.getPosition("hand/left"))
 	pass:sphere(target, 0.1)
-	self:poseLimb("left_arm", target)
+	local transform = mat4(self.position, self.orientation):scale(self.scale)
+	self:poseLimb("left_arm", transform:invert() * target)
 	pass:setColor(0x40d0d0)
 	local lh = vec3(self.position) + vec3(self.model:getNodePosition("Left wrist")) * self.scale
 	pass:sphere(lh, 0.1)
-	local transform = mat4(self.position, self.orientation):scale(self.scale)
-	self.ik:update(transform)
+	for _, ik in pairs(self.ik) do
+		if ik.dirty then
+			ik.dirty = false
+			IK.update_model_chain(self.model, ik.target, ik.start_id, ik.end_id, self.ik_options)
+		end
+	end
 	pass:setColor(0xffffff)
 	pass:draw(self.model, self.position, self.scale, self.orientation)
 end
