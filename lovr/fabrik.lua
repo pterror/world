@@ -3,7 +3,6 @@ local mod = {}
 --[[@class lovrx_fabrik_options]]
 --[[@field max_iterations integer]]
 --[[@field epsilon number]]
---[[@field weight number]]
 
 --[[@param target lovr_vec3]]
 --[[@param nodes lovr_vec3[] ]]
@@ -20,7 +19,7 @@ local solve_chain = function(target, nodes, options)
 		lengths[#lengths + 1] = new_length
 	end
 	local total_distance = target:distance(new_nodes[1])
-	if total_distance > total_length then
+	if total_distance >= total_length then
 		local direction = (target - new_nodes[1]):normalize()
 		for i = 1, #new_nodes - 1 do
 			new_nodes[i + 1] = new_nodes[i] + direction * lengths[i]
@@ -35,9 +34,9 @@ local solve_chain = function(target, nodes, options)
 	while i < max_iterations and target:distance(new_nodes[#new_nodes]) > epsilon do
 		i = i + 1
 		local current_target = target
-		new_nodes[segment_count] = current_target
+		new_nodes[#new_nodes] = current_target
 		--[[forward pass]]
-		for j = segment_count - 1, 1, -1 do
+		for j = segment_count, 1, -1 do
 			local next_node = new_nodes[j + 1]
 			local current_node = new_nodes[j]
 			new_nodes[j] = next_node - (next_node - current_node):normalize() * lengths[j]
@@ -59,7 +58,9 @@ end
 --[[@param end_id number|string]]
 --[[@param options? lovrx_fabrik_options]]
 mod.update_model_chain = function(model, target, start_id, end_id, options)
-	local weight = (options and options.weight) or 1
+	local distance = (vec3(model:getNodePosition(end_id)) - target):length()
+	local epsilon = (options and options.epsilon) or 0.01
+	if distance <= epsilon then return end
 	local reversed_nodes = {} --[[@type lovr_vec3[] ]]
 	local reversed_ids = {} --[[@type (string|number)[] ]]
 	local id = end_id
@@ -77,11 +78,14 @@ mod.update_model_chain = function(model, target, start_id, end_id, options)
 	end
 	local new_nodes = solve_chain(target, nodes, options)
 	local size = #new_nodes
-	for i = 1, size do
+	for i = 1, size - 1 do
 		local current_id = ids[i]
-		local parent_id = model:getNodeParent(current_id)
-		local parent_transform = mat4(model:getNodeTransform(parent_id))
-		model:setNodePosition(current_id, parent_transform:invert() * new_nodes[i], weight)
+		model:setNodeOrientation(current_id, quat())
+		local transform = mat4(model:getNodeTransform(current_id)):invert()
+		local initial_direction = vec3(model:getNodePosition(ids[i + 1], "parent"))
+		local direction = transform * new_nodes[i + 1] - transform * new_nodes[i]
+		local orientation = quat(direction:angle(initial_direction), initial_direction:cross(direction):unpack())
+		model:setNodeOrientation(current_id, orientation)
 	end
 end
 
