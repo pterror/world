@@ -1,5 +1,8 @@
 local IK = require("lovr.fabrik")
 
+--[[@diagnostic disable: inject-field]]
+local quat_left = Quat(math.pi / 2, 0, 1, 0)
+
 --[[@class world_vr_humanoid_options]]
 --[[@field model string|lovr_blob|lovr_model_data]]
 --[[@field position? lovr_vec3]]
@@ -67,6 +70,7 @@ Humanoid.new = function(self, options)
 		position = position,
 		orientation = orientation,
 		scale = scale,
+		speed = { walk = 3, strafe = 3, sprint = 10, },
 		ik_options = {
 			max_iterations = 10,
 			epsilon = 0.0001,
@@ -90,8 +94,42 @@ Humanoid.poseLimb = function(self, limb, target)
 	ik.target = Vec3(target)
 end
 
+--[[@param dt number]]
+--[[@param context world_vr_context]]
+Humanoid.update = function(self, dt, context)
+	--[[player behavior]]
+	--[[TODO: rebindable inputs]]
+	--[[TODO: move towards camera, not forwards]]
+	if context.has_keyboard then
+		local is_sprinting = lovr.system.isKeyDown("space")
+		local speed = is_sprinting and self.speed.sprint or self.speed.walk
+		local strafe_speed = self.speed.strafe
+		local facing = self.orientation:direction()
+		local left = (quat(self.orientation) * quat_left):direction()
+		local delta = vec3()
+		if lovr.system.isKeyDown("w") then
+			delta = delta + facing * speed * -dt
+		end
+		if lovr.system.isKeyDown("s") then
+			delta = delta + facing * speed * dt
+		end
+		if lovr.system.isKeyDown("a") then
+			delta = delta + left * strafe_speed * -dt
+		end
+		if lovr.system.isKeyDown("d") then
+			delta = delta + left * strafe_speed * dt
+		end
+		if delta:length() > 0 then
+			self.position = Vec3(self.position + delta)
+		end
+	end
+	--[[end player behavior]]
+end
+
 --[[@param pass lovr_pass]]
 Humanoid.draw = function(self, pass)
+	--[[TODO: behaviors]]
+	--[[ik behavior]]
 	local target = vec3(lovr.headset.getPosition("hand/left"))
 	local transform = mat4(self.position, self.orientation):scale(self.scale)
 	self:poseLimb("left_arm", transform:invert() * target)
@@ -101,6 +139,7 @@ Humanoid.draw = function(self, pass)
 			IK.update_model_chain(self.model, ik.target, ik.start_id, ik.end_id, self.ik_options)
 		end
 	end
+	--[[end ik behavior]]
 	pass:setColor(0xffffff)
 	pass:draw(self.model, self.position, self.scale, self.orientation)
 end

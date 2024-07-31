@@ -67,10 +67,10 @@ local save_path = arg[1]
 local save_data
 
 --[[@class world_vr_context]]
+--[[@field has_keyboard boolean]]
 --[[@field world lovr_world]]
 
-local context
-local world --[[@type lovr_world]]
+local context --[[@type world_vr_context]]
 local shader --[[@type lovr_shader]]
 local basic_shader --[[@type lovr_shader]]
 local spherical_harmonics --[[@type lovr_buffer]]
@@ -78,8 +78,8 @@ local spherical_harmonics --[[@type lovr_buffer]]
 function lovr.load()
 	UI.Init()
 	--[[@diagnostic disable-next-line: missing-parameter]]
-	world = lovr.physics.newWorld()
-	context = { world = world }
+	local world = lovr.physics.newWorld()
+	context = { world = world, has_keyboard = false }
 	local err
 	save_data, err = read_save(save_path)
 	if not save_data then
@@ -109,8 +109,14 @@ function lovr.load()
 	})
 end
 
-function lovr.update()
+function lovr.keypressed() context.has_keyboard = true end
+
+function lovr.update(dt)
 	UI.InputInfo()
+	for i = 1, #save_data.objects do
+		local obj = save_data.objects[i]
+		if obj.update then obj:update(dt, context) end
+	end
 end
 
 function lovr.draw(pass)
