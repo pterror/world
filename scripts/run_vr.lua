@@ -3,5 +3,5 @@ if jit.os == "OSX" then
 	--[[TODO:]]
 else
 	--[[assume posix]]
-	os.execute("deps/lovr world_vr.lua")
+	os.execute("deps/lovr world_vr.lua " .. table.concat(arg, " "))
 end
