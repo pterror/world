@@ -151,23 +151,15 @@ local limb_to_node = {
 Humanoid.poseLimb = function(self, limb, target)
 	--[[@type lovrx_fabrik_chain_node]]
 	local ik_node = self[limb_to_node[limb]]
-	ik_node.target = target
+	ik_node.target = Vec3(target)
 end
 
 --[[@param pass lovr_pass]]
 Humanoid.draw = function(self, pass)
-	-- self.model:setNodeOrientation("Head", math.sin(lovr.timer.getTime() * 3.14), 0, 1, 0)
-	-- self.model:setNodeOrientation("Neck", math.sin(lovr.timer.getTime() * 3.14) * 0.5, 0, 0, 1)
-	-- self.model:setNodeOrientation("Chest", math.sin(lovr.timer.getTime() * 3.14) * 0.5, 1, 0, 0)
-	-- self.model:setNodeOrientation("Left arm", math.sin(lovr.timer.getTime() * 3.14) * 0.5 - 0.5, 1, 0, 0)
-	-- self.model:setNodeOrientation("Left elbow", math.sin(lovr.timer.getTime() * 3.14) * 0.5 - 0.5, 1, 0, 0)
-	-- self.model:setNodeOrientation("Left shoulder", math.sin(lovr.timer.getTime() * 3.14) * 0.5, 1, 0, 0)
-	pass:setColor(0xd040d0)
-	local t = lovr.timer.getTime() * 3.14
-	local target = Vec3(0.5 + math.sin(t) * 0.5, 1.8 + math.cos(t) * 0.5, -2.5)
+	local target = vec3(lovr.headset.getPosition("hand/left"))
 	pass:sphere(target, 0.1)
-	pass:setColor(0x40d0d0)
 	self:poseLimb("left_arm", target)
+	pass:setColor(0x40d0d0)
 	local lh = vec3(self.position) + vec3(self.model:getNodePosition("Left wrist")) * self.scale
 	pass:sphere(lh, 0.1)
 	local transform = mat4(self.position, self.orientation):scale(self.scale)
