@@ -81,11 +81,14 @@ mod.update_model_chain = function(model, target, start_id, end_id, options)
 	for i = 1, size - 1 do
 		local current_id = ids[i]
 		model:setNodeOrientation(current_id, quat())
-		local transform = mat4(model:getNodeTransform(current_id)):invert()
-		local initial_direction = vec3(model:getNodePosition(ids[i + 1], "parent"))
-		local direction = transform * new_nodes[i + 1] - transform * new_nodes[i]
-		local orientation = quat(direction:angle(initial_direction), initial_direction:cross(direction):unpack())
-		model:setNodeOrientation(current_id, orientation)
+		local up = vec3(model:getNodeOrientation(current_id, "parent"))
+		local transform = mat4():target(new_nodes[i], new_nodes[i + 1], up)
+		model:setNodeTransform(current_id, transform)
+		-- local transform = mat4(model:getNodeTransform(current_id)):invert()
+		-- local initial_direction = vec3(model:getNodePosition(ids[i + 1], "parent"))
+		-- local direction = transform * new_nodes[i + 1] - transform * new_nodes[i]
+		-- local orientation = quat(direction:angle(initial_direction), initial_direction:cross(direction):unpack())
+		-- model:setNodeOrientation(current_id, orientation)
 	end
 end
 

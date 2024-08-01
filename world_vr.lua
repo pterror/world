@@ -66,10 +66,6 @@ end
 local save_path = arg[1]
 local save_data
 
---[[@class world_vr_context]]
---[[@field has_keyboard boolean]]
---[[@field world lovr_world]]
-
 local context --[[@type world_vr_context]]
 local shader --[[@type lovr_shader]]
 local basic_shader --[[@type lovr_shader]]
@@ -79,7 +75,16 @@ function lovr.load()
 	UI.Init()
 	--[[@diagnostic disable-next-line: missing-parameter]]
 	local world = lovr.physics.newWorld()
-	context = { world = world, has_keyboard = false }
+	--[[@class world_vr_context]]
+	context = {
+		world = world,
+		has_keyboard = false,
+		has_mouse = false,
+		transform = Mat4():identity(),
+		draw_queue = {}, --[[@type unknown[] ]]
+		update_queue = {}, --[[@type unknown[] ]]
+		mouse_moved_queue = {}, --[[@type unknown[] ]]
+	}
 	local err
 	save_data, err = read_save(save_path)
 	if not save_data then
@@ -90,6 +95,9 @@ function lovr.load()
 	for i = 1, #save_data.objects do
 		local obj = save_data.objects[i]
 		if obj.initialize then obj:initialize(context) end
+		if obj.draw then context.draw_queue[#context.draw_queue + 1] = obj end
+		if obj.update then context.update_queue[#context.update_queue + 1] = obj end
+		if obj.mouseMoved then context.mouse_moved_queue[#context.mouse_moved_queue + 1] = obj end
 	end
 	shader = require("lovr.lighting.pbr")()
 	--[[FIXME: phong shading has issues with draw order or something]]
@@ -109,26 +117,27 @@ function lovr.load()
 	})
 end
 
+function lovr.mousemoved(x, y, dx, dy)
+	context.has_mouse = true
+	for _, obj in ipairs(context.mouse_moved_queue) do obj:mouseMoved(x, y, dx, dy, context) end
+end
+
 function lovr.keypressed() context.has_keyboard = true end
 
 function lovr.update(dt)
 	UI.InputInfo()
-	for i = 1, #save_data.objects do
-		local obj = save_data.objects[i]
-		if obj.update then obj:update(dt, context) end
-	end
+	for _, obj in ipairs(context.update_queue) do obj:update(dt, context) end
 end
 
 function lovr.draw(pass)
+	pass:origin()
+	pass:transform(mat4(context.transform):invert())
 	pass:setCullMode("back")
 	pass:setViewCull(true)
 	pass:setShader(shader)
 	pass:send("sphericalHarmonics", spherical_harmonics)
 
-	for i = 1, #save_data.objects do
-		local obj = save_data.objects[i]
-		if obj.draw then obj:draw(pass) end
-	end
+	for _, obj in ipairs(context.draw_queue) do obj:draw(pass, context) end
 
 	pass:setShader(basic_shader)
 

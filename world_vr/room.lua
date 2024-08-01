@@ -59,12 +59,12 @@ Room.draw = function(self, pass)
 	pass:setColor(self.color)
 	local x, y, z = self.x, self.y, self.z
 	local w, h, d = self.width, self.height, self.depth
-	pass:box(x - hp, y + h / 2, z + d / 2, p, h, d)
-	pass:box(x + w, y + h / 2, z + d / 2, p, h, d)
-	pass:box(x + w / 2, y - hp, z + d / 2, w, p, d)
-	pass:box(x + w / 2, y + h, z + d / 2, w, p, d)
-	pass:box(x + w / 2, y + h / 2, z - hp, w, h, p)
-	pass:box(x + w / 2, y + h / 2, z + d, w, h, p)
+	-- pass:box(x - hp, y + h / 2, z + d / 2, p, h, d)
+	-- pass:box(x + w, y + h / 2, z + d / 2, p, h, d)
+	-- pass:box(x + w / 2, y - hp, z + d / 2, w, p, d)
+	-- pass:box(x + w / 2, y + h, z + d / 2, w, p, d)
+	-- pass:box(x + w / 2, y + h / 2, z - hp, w, h, p)
+	-- pass:box(x + w / 2, y + h / 2, z + d, w, h, p)
 end
 
 --[[@param x number]]
